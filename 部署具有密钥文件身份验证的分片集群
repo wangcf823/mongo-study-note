@@ -4,11 +4,220 @@ db.help()
 db.collection.help()
 db.collection.find().help()：使用 db.collection.find().help()命令列出可用的修饰符和游标处理方法
 
-mongod --config <path-to-config-file>
-config_content:
+Keyfile Security
+密钥文件是最低限度的安全形式，最适合测试或开发环境。
+
+Create the Keyfile
+使用密钥文件身份验证，分片群集中的每个mongod或mongos实例都使用密钥文件的内容作为共享密码，用于身份验证部署中的其他成员。只有具有正确密钥文件的mongod或mongos实例才能加入分片集群。
+
+NOTE
+    从MongoDB 4.2开始，用于内部成员身份认证的密钥文件使用YAML格式，以允许在密钥文件中存在多个密钥。YAML格式接受以下内容：
+
+      单个密钥字符串（与早期版本相同），
+      多个键字符串（每个字符串必须用引号括起来），或密钥字符串的序列。
+      YAML格式与现有使用文本文件格式的单键密钥文件兼容。
+密钥的长度必须在6到1024个字符之间，并且只能包含base64集中的字符。分片集群的所有成员必须至少共享一个公共密钥。
+
+note
+    在UNIX系统上，密钥文件不得具有组或世界权限。在Windows系统上，不检查密钥文件权限。
+    
+您可以使用选择的任何方法生成密钥文件。例如，以下操作使用openssl生成一个复杂的伪随机1024字符串，用作共享密码。然后，它使用chmod更改文件权限，以仅为文件所有者提供读取权限：
+openssl rand -base64 756 > <path-to-keyfile>
+chmod 400 <path-to-keyfile>
+
+
+Create the Config Server Replica Set创建配置服务器副本集
+1、Configuration File
 security:
   keyFile: <path-to-keyfile>
 sharding:
-  clusterRole: configsvr       
+  clusterRole: configsvr
 replication:
-  replSetName: <setname>      配置服务器副本集的所需名称
+  replSetName: <setname>
+根据您的配置需要包括其他选项。例如，如果希望远程客户端连接到部署，或者部署成员在不同的主机上运行，请指定net.bindIp设置
+mongod --config <path-to-config-file>
+Command Line
+mongod --keyFile <path-to-keyfile> --configsvr --replSet <setname> --dbpath <path>
+
+2、通过localhost接口连接到副本集的成员Connect to a member of the replica set over the localhost interface
+通过localhost接口将mongo shell连接到其中一个mongod实例。必须在与mongod实例相同的物理机上运行mongo shell。
+
+3、rs.initiate()方法启动副本集，并可以获取可选的副本集配置文档。在副本集配置文档中，包括：
+      _id。_id必须与传递给mongod的--replSet参数匹配
+      成员字段。成员字段是一个数组，需要副本集的每个成员都有一个文档。
+      configsvr字段。配置服务器副本集的configsvr字段必须设置为true。
+      
+   Initiate the replica set using the rs.initiate() method and a configuration document:
+   rs.initiate(
+  {
+    _id: "<replSetName>",
+    configsvr: true,
+    members: [
+      { _id : 0, host : "cfg1.example.net:27019" },
+      { _id : 1, host : "cfg2.example.net:27019" },
+      { _id : 2, host : "cfg3.example.net:27019" }
+    ]
+  }
+)
+
+
+Once the config server replica set (CSRS) is initiated and up, proceed to creating the shard replica sets.
+
+
+Create the Shard Replica Sets创建分片副本集
+1、在启用访问控制的情况下启动副本集的每个成员。
+Configuration File
+如果使用配置文件，请将security.keyFile选项设置为密钥文件的路径，将replication.replSetName 设置为副本集的所需名称，将sharding.clusterRole选项设置为shardsvr。
+security:
+  keyFile: <path-to-keyfile>
+sharding:
+  clusterRole: shardsvr
+replication:
+  replSetName: <replSetName>
+storage:
+   dbPath: <path>
+根据您的配置需要包括其他选项。例如，如果希望远程客户端连接到部署，或者部署成员在不同的主机上运行，请指定net.bindIp设置。有关更多信息，请参见Localhost绑定兼容性更改。
+
+启动mongod，指定--config选项和配置文件的路径。
+mongod --config <path-to-config-file>
+
+Command Line
+如果使用命令行选项，则在启动组件时，指定--keyFile、replSet和--shardsvr参数，如以下示例所示：
+mongod --keyFile <path-to-keyfile> --shardsvr --replSet <replSetName>  --dbpath <path>
+
+2、通过localhost接口连接到副本集的成员
+通过localhost接口将mongo shell连接到其中一个mongod实例。必须在与mongod实例相同的物理机上运行mongo shell。
+localhost接口仅可用在尚未为部署创建用户。创建第一个用户后，localhost接口关闭。
+
+3、Initiate the replica set.启动副本集。
+From the mongo shell, run the rs.initiate() method.
+rs.initiate() can take an optional replica set configuration document. In the replica set configuration document, include:
+       1）The _id field set to the replica set name specified in either the replication.replSetName or the --replSet option.
+       2）The members array with a document per each member of the replica set.
+       
+ The following example initates a three member replica set.以下示例启动三个成员副本集。
+ rs.initiate(
+  {
+    _id : <replicaSetName>,
+    members: [
+      { _id : 0, host : "s1-mongo1.example.net:27018" },
+      { _id : 1, host : "s1-mongo2.example.net:27018" },
+      { _id : 2, host : "s1-mongo3.example.net:27018" }
+    ]
+  }
+)
+
+rs.initiate() triggers an election and elects one of the members to be the primary。rs.initiate()触发选举，并选举其中一个成员作为主要成员。
+在继续之前，请连接到主服务器。使用rs.status()查找主成员。Connect to the primary before continuing. Use rs.status() to locate the primary member.
+
+4、创建分片本地用户管理员（可选）
+IMPORTANT
+  创建第一个用户后，localhost例外将不再可用。
+  第一个用户必须具有创建其他用户的权限，例如具有userAdminAnyDatabase的用户。这可确保您可以在Localhost例外关闭后创建其他用户。
+  如果最少的一个用户没有创建用户的权限，则一旦localhost异常关闭，您可能无法创建或修改具有新权限的用户，因此无法访问必要的操作。
+  Add a user using the db.createUser() method. The user should have at minimum the userAdminAnyDatabase role on the admin database.
+  You must be connected to the primary to create users.
+  以下示例在admin数据库上创建具有userAdminAnyDatabase角色的用户fred。
+  admin = db.getSiblingDB("admin")
+admin.createUser(
+  {
+    user: "fred",
+    pwd: passwordPrompt(), // or cleartext password
+    roles: [ { role: "userAdminAnyDatabase", db: "admin" } ]
+  }
+)
+
+5、以shard本地用户管理员身份认证（可选）
+
+
+
+6、创建分片本地集群管理员（可选）
+db.getSiblingDB("admin").createUser(
+  {
+    "user" : "ravi",
+    "pwd" : passwordPrompt(),     // or cleartext password
+    roles: [ { "role" : "clusterAdmin", "db" : "admin" } ]
+  }
+)
+
+
+将mongos连接到分片集群Connect a mongos to the Sharded Cluster
+1、将mongos连接到集群Connect a mongos to the cluster
+使用配置文件或命令行参数启动mongos指定密钥文件。
+Configuration File
+如果使用配置文件，请将security.keyFile设置为密钥文件的路径，将sharding.configDB设置为副本集名称和副本集的至少一个成员，格式为<replSetName>/<host:port>。
+security:
+  keyFile: <path-to-keyfile>
+sharding:
+  configDB: <configReplSetName>/cfg1.example.net:27019,cfg2.example.net:27019,...
+
+mongos --config <path-to-config>
+
+Command Line
+mongos --keyFile <path-to-keyfile> --configdb <configReplSetName>/cfg1.example.net:27019,cfg2.example.net:27019,...
+通过localhost接口连接mongos。
+
+
+Add Shards to the Cluster
+要继续，您必须连接到mongos，并以分片群集的群集管理员用户身份进行身份验证。
+
+NOTE
+    这是分片群集的群集管理员，而不是分片本地群集管理员。This is the cluster administrator for the sharded cluster and not the shard-local cluster administrator.
+    
+要将每个分片添加到集群中，请使用sh.addShard()方法。如果分片是副本集，请指定副本集的名称，并指定集合的成员。在生产部署中，所有分片都应该是副本集。
+
+The following operation adds a single shard replica set to the cluster:以下操作将单个分片副本集添加到群集：
+sh.addShard( "<replSetName>/s1-mongo1.example.net:27017")
+
+The following operation is an example of adding a standalone mongod shard to the cluster:
+sh.addShard( "s1-mongo1.example.net:27017")
+
+重复这些步骤，直到集群包含所有分片。此时，分片群集将对群集以及每个分片群集组件之间的内部通信实施访问控制。
+
+启用数据库分片Enable Sharding for a Database
+要继续，您必须连接到mongos，并以分片群集的群集管理员用户身份进行身份验证。To proceed, you must be connected to the mongos and authenticated as the cluster administrator user for the sharded cluster.
+
+在数据库上启用分片可以在数据库中对集合进行分片。使用sh.enableSharding()方法在目标数据库上启用分片。
+sh.enableSharding("<database>")
+
+Shard a Collection分片集合
+要对集合进行分片，请使用sh.shardCollection()方法。您必须指定集合的完整命名空间和包含分片键的文档。
+您对分片键的选择会影响分片的效率，以及您利用某些分片功能（如区域）的能力。请参阅选择分片键中列出的选择注意事项。
+If the collection already contains data, you must create an index on the shard key using the db.collection.createIndex() method before using shardCollection().
+如果集合已经包含数据，则在使用shardCollection()之前，必须使用db.collection.createIndex()方法在分片键上创建索引。
+如果集合为空，则MongoDB将索引创建为sh.shardCollection()的一部分。
+The following is an example of the sh.shardCollection() method:
+sh.shardCollection("<database>.<collection>", { <key> : <direction> } )
+
+Next Steps
+Create users to allow clients to connect to and interact with the sharded cluster.
+See Database User Roles for basic built-in roles to use in creating read-only and read-write users.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
