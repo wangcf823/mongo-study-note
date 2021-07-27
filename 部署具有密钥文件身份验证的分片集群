@@ -1,0 +1,14 @@
+帮助文档
+shell：  help
+db.help()
+db.collection.help()
+db.collection.find().help()：使用 db.collection.find().help()命令列出可用的修饰符和游标处理方法
+
+mongod --config <path-to-config-file>
+config_content:
+security:
+  keyFile: <path-to-keyfile>
+sharding:
+  clusterRole: configsvr       
+replication:
+  replSetName: <setname>      配置服务器副本集的所需名称
