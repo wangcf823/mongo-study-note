@@ -1,0 +1,29 @@
+CRUD操作创建、读取、更新和删除文档。
+Create
+Create or insert操作将新文档添加到集合中。如果集合当前不存在，则插入操作将创建集合。
+db.collection.insertOne() New in version 3.2
+db.collection.insertMany() New in version 3.2
+在MongoDB中，插入操作以单个集合为目标。MongoDB中的所有写操作都是单个文档级别的原子操作。
+https://docs.mongodb.com/v4.4/crud/  图
+
+Read 
+读取操作从集合中检索文档；即查询集合中的文档。MongoDB提供了以下方法来从集合中读取文档：
+db.collection.find()
+您可以指定查询筛选器或条件标识要返回的文档的.You can specify query filters or criteria that identify the documents to return.
+
+Update
+Update operations modify existing documents in a collection. MongoDB provides the following methods to update documents of a collection:更新操作修改集合中的现有文档。MongoDB提供了以下方法来更新集合的文档：
+db.collection.updateOne() New in version 3.2
+db.collection.updateMany() New in version 3.2
+db.collection.replaceOne() New in version 3.2
+In MongoDB, update operations target a single collection. All write operations in MongoDB are atomic on the level of a single document.在MongoDB中，更新操作以单个集合为目标。MongoDB中的所有写操作都是单个文档级别的原子操作。
+您可以指定标识要更新的文档的标准或过滤器。这些过滤器使用与读取操作相同的语法。
+https://docs.mongodb.com/v4.4/crud/
+
+Delete
+删除操作从集合中删除文档。MongoDB提供了以下方法来删除集合的文档：Delete operations remove documents from a collection. MongoDB provides the following methods to delete documents of a collection:
+db.collection.deleteOne() New in version 3.2
+db.collection.deleteMany() New in version 3.2
+在MongoDB中，删除操作以单个集合为目标。MongoDB中的所有写操作都是单个文档级别的原子操作。In MongoDB, delete operations target a single collection. All write operations in MongoDB are atomic on the level of a single document.
+您可以指定标识要删除的文档的标准或过滤器。这些过滤器使用与读取操作相同的语法。You can specify criteria, or filters, that identify the documents to remove. These filters use the same syntax as read operations.
+https://docs.mongodb.com/v4.4/crud/
