@@ -1,0 +1,77 @@
+This page uses the following mongo shell methods:
+db.collection.updateOne(<filter>, <update>, <options>)
+db.collection.updateMany(<filter>, <update>, <options>)
+db.collection.replaceOne(<filter>, <update>, <options>)
+The examples on this page use the inventory collection. To create and/or populate the inventory collection, run the following:
+此页上的示例使用库存集合。要创建和/或填充库存集合，请运行以下命令：
+db.inventory.insertMany( [
+   { item: "canvas", qty: 100, size: { h: 28, w: 35.5, uom: "cm" }, status: "A" },
+   { item: "journal", qty: 25, size: { h: 14, w: 21, uom: "cm" }, status: "A" },
+   { item: "mat", qty: 85, size: { h: 27.9, w: 35.5, uom: "cm" }, status: "A" },
+   { item: "mousepad", qty: 25, size: { h: 19, w: 22.85, uom: "cm" }, status: "P" },
+   { item: "notebook", qty: 50, size: { h: 8.5, w: 11, uom: "in" }, status: "P" },
+   { item: "paper", qty: 100, size: { h: 8.5, w: 11, uom: "in" }, status: "D" },
+   { item: "planner", qty: 75, size: { h: 22.85, w: 30, uom: "cm" }, status: "D" },
+   { item: "postcard", qty: 45, size: { h: 10, w: 15.25, uom: "cm" }, status: "A" },
+   { item: "sketchbook", qty: 80, size: { h: 14, w: 21, uom: "cm" }, status: "A" },
+   { item: "sketch pad", qty: 95, size: { h: 22.85, w: 30.5, uom: "cm" }, status: "A" }
+] );
+
+Update Documents in a Collection
+To update a document, MongoDB provides update operators, such as $set, to modify field values.
+为了更新文档，MongoDB提供了更新运算符，如$set，来修改字段值。
+To use the update operators, pass to the update methods an update document of the form:
+要使用更新运算符，请将表单的更新文档传递给更新方法：
+{
+  <update operator>: { <field1>: <value1>, ... },
+  <update operator>: { <field2>: <value2>, ... },
+  ...
+}
+Some update operators, such as $set, will create the field if the field does not exist. See the individual update operator reference for details.
+
+Update a Single Document
+The following example uses the db.collection.updateOne() method on the inventory collection to update the first document where item equals "paper":
+db.inventory.updateOne(
+   { item: "paper" },
+   {
+     $set: { "size.uom": "cm", status: "P" },
+     $currentDate: { lastModified: true }
+   }
+)
+The update operation:
+uses the $set operator to update the value of the size.uom field to "cm" and the value of the status field to "P",
+uses the $currentDate operator to update the value of the lastModified field to the current date. If lastModified field does not exist, $currentDate will create the field. See $currentDate for details.
+db.inventory.updateMany(
+   { "qty": { $lt: 50 } },
+   {
+     $set: { "size.uom": "in", status: "P" },
+     $currentDate: { lastModified: true }
+   }
+)
+The update operation:
+uses the $set operator to update the value of the size.uom field to "in" and the value of the status field to "P",
+uses the $currentDate operator to update the value of the lastModified field to the current date. If lastModified field does not exist, $currentDate will create the field. See $currentDate for details.
+db.inventory.replaceOne(
+   { item: "paper" },
+   { item: "paper", instock: [ { warehouse: "A", qty: 60 }, { warehouse: "B", qty: 40 } ] }
+)
+
+Behavior
+Atomicity
+All write operations in MongoDB are atomic on the level of a single document. For more information on MongoDB and atomicity, see Atomicity and Transactions.
+
+_id Field
+Once set, you cannot update the value of the _id field nor can you replace an existing document with a replacement document that has a different _id field value.
+一旦设置，您就不能更新_id字段的值，也不能用具有不同_id字段值的替换文档替换现有文档。
+
+Field Order
+MongoDB保留写入操作后文档字段的顺序，但以下情况除外：
+The _id field is always the first field in the document._id字段始终是文档中的第一个字段。
+Updates that include renaming of field names may result in the reordering of fields in the document.包括重命名字段名的更新可能会导致文档中字段的重新排序。
+
+
+
+
+
+
+
