@@ -1,0 +1,72 @@
+This page provides examples of query operations using the db.collection.find() method in the mongo shell. The examples on this page use the inventory collection. To populate the inventory collection, run the following:
+db.inventory.insertMany([
+   { item: "journal", qty: 25, size: { h: 14, w: 21, uom: "cm" }, status: "A" },
+   { item: "notebook", qty: 50, size: { h: 8.5, w: 11, uom: "in" }, status: "A" },
+   { item: "paper", qty: 100, size: { h: 8.5, w: 11, uom: "in" }, status: "D" },
+   { item: "planner", qty: 75, size: { h: 22.85, w: 30, uom: "cm" }, status: "D" },
+   { item: "postcard", qty: 45, size: { h: 10, w: 15.25, uom: "cm" }, status: "A" }
+]);
+
+Select All Documents in a Collection
+To select all documents in the collection, pass an empty document as the query filter parameter to the find method. The query filter parameter determines the select criteria:
+要选择集合中的所有文档，请将空文档作为查询筛选参数传递给find方法。查询筛选器参数确定选择条件：
+db.inventory.find( {} )
+This operation corresponds to the following SQL statement:此操作对应以下SQL语句：
+SELECT * FROM inventory
+For more information on the syntax of the method, see find().
+
+Specify Equality Condition指定相等条件
+要指定相等条件，请在查询筛选器文档中使用<field>:<value>表达式：
+{ <field1>: <value1>, ... }
+以下示例从库存集合中选择状态等于“D”的所有单据：The following example selects from the inventory collection all documents where the status equals "D":
+db.inventory.find( { status: "D" } )
+This operation corresponds to the following SQL statement:
+SELECT * FROM inventory WHERE status = "D"
+
+使用查询运算符指定条件Specify Conditions Using Query Operators
+查询筛选文档可以使用查询运算符以以下形式指定条件：
+{ <field1>: { <operator1>: <value1> }, ... }
+以下示例从库存集合中检索状态等于“A”或“D”的所有文档：
+db.inventory.find( { status: { $in: [ "A", "D" ] } } )
+The operation corresponds to the following SQL statement:该操作对应以下SQL语句：
+SELECT * FROM inventory WHERE status in ("A", "D")
+
+Specify AND Conditions
+A compound query can specify conditions for more than one field in the collection's documents. Implicitly, a logical AND conjunction connects the clauses of a compound query so that the query selects the documents in the collection that match all the conditions.
+复合查询可以为集合文档中的多个字段指定条件。隐式地，逻辑AND连接连接复合查询的子句，以便查询选择集合中匹配所有条件的文档。
+The following example retrieves all documents in the inventory collection where the status equals "A" and qty is less than ($lt) 30:
+以下示例检索库存集合中状态等于“A”且数量小于($lt) 30的所有文档：
+db.inventory.find( { status: "A", qty: { $lt: 30 } } )
+The operation corresponds to the following SQL statement:
+SELECT * FROM inventory WHERE status = "A" AND qty < 30
+
+Specify OR Conditions
+Using the $or operator, you can specify a compound query that joins each clause with a logical OR conjunction so that the query selects the documents in the collection that match at least one condition.
+使用$or运算符，您可以指定一个复合查询，该查询将每个子句与逻辑OR连接，以便查询选择集合中至少匹配一个条件的文档。
+The following example retrieves all documents in the collection where the status equals "A" or qty is less than ($lt) 30:
+以下示例检索集合中状态等于“A”或数量小于($lt) 30的所有文档：
+db.inventory.find( { $or: [ { status: "A" }, { qty: { $lt: 30 } } ] } )
+The operation corresponds to the following SQL statement:
+SELECT * FROM inventory WHERE status = "A" OR qty < 30
+
+Specify AND as well as OR Conditions
+In the following example, the compound query document selects all documents in the collection where the status equals "A" and either qty is less than ($lt) 30 or item starts with the character p:
+在以下示例中，复合查询文档选择集合中状态等于“A”且数量小于($lt) 30或项目以字符p开头的所有文档：
+db.inventory.find( {
+     status: "A",
+     $or: [ { qty: { $lt: 30 } }, { item: /^p/ } ]
+} )
+The operation corresponds to the following SQL statement:
+SELECT * FROM inventory WHERE status = "A" AND ( qty < 30 OR item LIKE "p%")
+
+
+
+
+
+
+
+
+
+
+
+
