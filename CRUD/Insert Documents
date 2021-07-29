@@ -1,0 +1,53 @@
+Creating a Collection
+If the collection does not currently exist, insert operations will create the collection.
+
+Insert a Single Document
+db.collection.insertOne() inserts a single document into a collection.
+The following example inserts a new document into the inventory collection. If the document does not specify an _id field, MongoDB adds the _id field with an ObjectId value to the new document. See Insert Behavior.
+以下示例将新文档插入清单集合。如果文档未指定_id字段，MongoDB将带有ObjectId值的_id字段添加到新文档中。请参见插入行为。
+db.inventory.insertOne(
+   { item: "canvas", qty: 100, tags: ["cotton"], size: { h: 28, w: 35.5, uom: "cm" } }
+)
+要检索刚刚插入的文档，请查询集合：
+db.inventory.find( { item: "canvas" } )
+
+Insert Multiple Documents
+db.collection.insertMany() can insert multiple documents into a collection. Pass an array of documents to the method.
+以下示例将三个新文档插入清单集合。如果文档没有指定_id字段，MongoDB将带有ObjectId值的_id字段添加到每个文档中。
+db.inventory.insertMany([
+   { item: "journal", qty: 25, tags: ["blank", "red"], size: { h: 14, w: 21, uom: "cm" } },
+   { item: "mat", qty: 85, tags: ["gray"], size: { h: 27.9, w: 35.5, uom: "cm" } },
+   { item: "mousepad", qty: 25, tags: ["gel", "blue"], size: { h: 19, w: 22.85, uom: "cm" } }
+])
+
+Collection Creation
+如果集合当前不存在，则插入操作将创建集合。
+
+_id Field
+在MongoDB中，存储在集合中的每个文档都需要一个唯一的_id字段，该字段充当主键。如果插入的文档省略了_id字段，MongoDB驱动程序将自动为_id字段生成ObjectId。
+
+Atomicity原子性
+MongoDB中的所有写操作都是单个文档级别的原子操作。有关MongoDB和原子性的更多信息，请参见原子性和事务
+
+Write Acknowledgement写入确认
+对于写入问题，您可以指定从MongoDB请求的写入操作的确认级别。
+
+Insert Methods
+MongoDB provides the following methods for inserting documents into a collection:
+db.collection.insertOne()    Inserts a single document into a collection.
+db.collection.insertMany()    db.collection.insertMany() inserts multiple documents into a collection.
+db.collection.insert()       db.collection.insert() inserts a single document or multiple documents into a collection.
+
+Additional Methods for Inserts插入的其他方法
+The following methods can also add new documents to a collection:
+db.collection.update() when used with the upsert: true option.
+db.collection.updateOne() when used with the upsert: true option.
+db.collection.updateMany() when used with the upsert: true option.
+db.collection.findAndModify() when used with the upsert: true option.
+db.collection.findOneAndUpdate() when used with the upsert: true option.
+db.collection.findOneAndReplace() when used with the upsert: true option.
+db.collection.save().
+db.collection.bulkWrite().
+
+
+
