@@ -1,0 +1,13 @@
+Indexes support the efficient execution of queries in MongoDB. Without indexes, MongoDB must perform a collection scan, i.e. scan every document in a collection, to select those documents that match the query statement. If an appropriate index exists for a query, MongoDB can use the index to limit the number of documents it must inspect.
+索引支持MongoDB中高效执行查询。如果没有索引，MongoDB必须执行集合扫描，即扫描集合中的每个文档，以选择与查询语句匹配的文档。如果查询存在适当的索引，MongoDB可以使用该索引来限制它必须检查的文档数量。
+Indexes are special data structures [1] that store a small portion of the collection's data set in an easy to traverse form. The index stores the value of a specific field or set of fields, ordered by the value of the field. The ordering of the index entries supports efficient equality matches and range-based query operations. In addition, MongoDB can return sorted results by using the ordering in the index.
+索引是特殊的数据结构【1】，以易于遍历的形式存储集合数据集的一小部分。索引存储特定字段或字段集的值，按字段的值排序。索引条目的排序支持高效的等式匹配和基于范围的查询操作。此外，MongoDB还可以通过使用索引中的排序来返回排序的结果。
+
+The following diagram illustrates a query that selects and orders the matching documents using an index:
+下图说明了使用索引选择匹配文档并对其排序的查询：
+https://docs.mongodb.com/v4.4/indexes/
+
+Default _id Index
+MongoDB creates a unique index on the _id field during the creation of a collection. The _id index prevents clients from inserting two documents with the same value for the _id field. You cannot drop this index on the _id field.
+MongoDB在创建集合期间在_id字段上创建唯一索引。_id索引防止客户端为_id字段插入两个值相同的文档。您不能在_id字段上删除此索引。
+
