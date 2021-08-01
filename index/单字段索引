@@ -1,0 +1,83 @@
+MongoDB provides complete support for indexes on any field in a collection of documents. By default, all collections have an index on the _id field, and applications and users may add additional indexes to support important queries and operations.
+MongoDB对文档集合中任何字段上的索引提供了完全支持。默认情况下，所有集合在_id字段上都有索引，应用程序和用户可以添加额外的索引以支持重要的查询和操作。
+本文档描述了单个字段上的升序/降序索引。
+
+Create an Ascending Index on a Single Field
+在单个字段上创建升序索引
+
+Consider a collection named records that holds documents that resemble the following sample document:
+考虑一个名为记录的集合，该集合包含类似以下示例文档的文档：
+{
+  "_id": ObjectId("570c04a4ad233577f97dc459"),
+  "score": 1034,
+  "location": { state: "NY", city: "New York" }
+}
+The following operation creates an ascending index on the score field of the records collection:
+以下操作在记录集合的分数字段上创建升序索引：
+db.records.createIndex( { score: 1 } )
+The value of the field in the index specification describes the kind of index for that field. For example, a value of 1 specifies an index that orders items in ascending order. A value of -1 specifies an index that orders items in descending order. For additional index types, see index types.
+索引规范中字段的值描述了该字段的索引类型。例如，值1指定按升序对项目排序的索引。值-1指定按降序对项目排序的索引。有关其他索引类型，请参见索引类型。
+
+The created index will support queries that select on the field score, such as the following:
+创建的索引将支持在字段分数上选择的查询，例如：
+db.records.find( { score: 2 } )
+db.records.find( { score: { $gt: 10 } } )
+
+Create an Index on an Embedded Field
+在嵌入字段上创建索引
+You can create indexes on fields within embedded documents, just as you can index top-level fields in documents. Indexes on embedded fields differ from indexes on embedded documents, which include the full content up to the maximum index size of the embedded document in the index. Instead, indexes on embedded fields allow you to use a "dot notation," to introspect into embedded documents.
+您可以在嵌入文档中的字段上创建索引，就像您可以在文档中索引顶级字段一样。嵌入字段上的索引与嵌入文档上的索引不同，嵌入文档上的索引包括索引中嵌入文档的最大索引大小的完整内容。相反，嵌入字段上的索引允许您使用“点表示法”来内省嵌入文档。
+
+Consider a collection named records that holds documents that resemble the following sample document:
+考虑一个名为记录的集合，该集合包含类似以下示例文档的文档：
+{
+  "_id": ObjectId("570c04a4ad233577f97dc459"),
+  "score": 1034,
+  "location": { state: "NY", city: "New York" }
+}
+
+The following operation creates an index on the location.state field:
+以下操作在location.state字段上创建索引：
+db.records.createIndex( { "location.state": 1 } )
+The created index will support queries that select on the field location.state, such as the following:
+创建的索引将支持在字段location.state上选择的查询，例如：
+db.records.find( { "location.state": "CA" } )
+db.records.find( { "location.city": "Albany", "location.state": "NY" } )
+
+Create an Index on Embedded Document
+在嵌入式文档上创建索引
+You can also create indexes on embedded document as a whole.
+您还可以在嵌入式文档上作为一个整体创建索引。
+Consider a collection named records that holds documents that resemble the following sample document:
+考虑一个名为记录的集合，该集合包含类似以下示例文档的文档：
+{
+  "_id": ObjectId("570c04a4ad233577f97dc459"),
+  "score": 1034,
+  "location": { state: "NY", city: "New York" }
+}
+The location field is an embedded document, containing the embedded fields city and state. The following command creates an index on the location field as a whole:
+位置字段是嵌入文档，包含嵌入字段城市和州。以下命令在位置字段上创建一个整体索引：
+db.records.createIndex( { location: 1 } )
+The following query can use the index on the location field:
+以下查询可以使用位置字段上的索引：
+db.records.find( { location: { city: "New York", state: "NY" } } )
+
+NOTE
+Although the query can use the index, the result set does not include the sample document above. When performing equality matches on embedded documents, field order matters and the embedded documents must match exactly. See Query Embedded Documents for more information regarding querying on embedded documents.
+虽然查询可以使用索引，但结果集不包括上面的示例文档。在嵌入文档上执行相等匹配时，字段顺序和嵌入文档必须完全匹配。有关查询嵌入式文档的详细信息，请参阅查询嵌入式文档。
+
+Additional Considerations
+Applications may encounter reduced performance during index builds, including limited read/write access to the collection. For more information on the index build process, see Index Builds on Populated Collections, including the Index Builds in Replicated Environments section.
+应用程序在索引构建期间可能会遇到性能下降，包括对集合的读/写访问权限有限。有关索引生成过程的更多信息，请参见在填充集合上生成索引，包括在复制环境中生成索引部分。
+
+Some drivers may specify indexes, using NumberLong(1) rather than 1 as the specification. This does not have any affect on the resulting index.
+某些驱动程序可以指定索引，使用NumberLong(1)而不是1作为规范。这对结果索引没有任何影响。
+
+
+
+
+
+
+
+
+
