@@ -1,0 +1,75 @@
+This page shows how to manage existing indexes. For instructions on creating indexes, refer to the specific index type pages.
+此页显示如何管理现有索引。有关创建索引的说明，请参阅特定的索引类型页面。
+
+View Existing Indexes
+Mongo Shell
+The following sections provide methods for viewing existing indexes on a collection or an entire database.
+以下各节提供了查看集合或整个数据库上现有索引的方法。
+
+List all Indexes on a Collection
+To return a list of all indexes on a collection, use the db.collection.getIndexes() method or a similar method for your driver.
+要返回集合上所有索引的列表，请使用db.collection.getIndexes()方法或驱动程序的类似方法。
+For example, to view all indexes on the people collection, run the following command:
+db.people.getIndexes()
+
+List All Indexes for a Database
+To list all the collection indexes in a database, you can use the following operation in the mongo shell:
+要列出数据库中的所有集合索引，您可以在mongo shell中使用以下操作：
+db.getCollectionNames().forEach(function(collection) {
+   indexes = db[collection].getIndexes();
+   print("Indexes for " + collection + ":");
+   printjson(indexes);
+});
+Starting in version 3.0, MongoDB deprecates direct access to the system.indexes collection, which had previously been used to list all indexes in a database.
+从3.0版开始，MongoDB不建议直接访问system.indexes集合，该集合以前曾用于列出数据库中的所有索引。
+
+List Specific Type of Indexes
+To list all indexes of a certain type (e.g. hashed, text) for all collections in all database, you can use the following operation in the mongo shell:
+要列出所有数据库中所有集合的特定类型的所有索引（例如哈希、文本），您可以在mongo shell中使用以下操作：
+// The following finds all hashed indexes
+
+db.adminCommand("listDatabases").databases.forEach(function(d){
+   let mdb = db.getSiblingDB(d.name);
+   mdb.getCollectionInfos({ type: "collection" }).forEach(function(c){
+      let currentCollection = mdb.getCollection(c.name);
+      currentCollection.getIndexes().forEach(function(idx){
+        let idxValues = Object.values(Object.assign({}, idx.key));
+
+        if (idxValues.includes("hashed")) {
+          print("Hashed index: " + idx.name + " on " + d.name + "." + c.name);
+          printjson(idx);
+        };
+      });
+   });
+});
+
+Remove Indexes
+MongoDB provides two methods for removing indexes from a collection:
+db.collection.dropIndex() and
+db.collection.dropIndexes()
+
+Remove Specific Index
+To remove an index, use the db.collection.dropIndex() method.
+For example, the following operation removes an ascending index on the tax-id field in the accounts collection:
+例如，以下操作将删除帐户集合中税号字段上的升序索引：
+db.accounts.dropIndex( { "tax-id": 1 } )
+The operation returns a document with the status of the operation:
+操作返回具有操作状态的文档：
+{ "nIndexesWas" : 3, "ok" : 1 }
+Where the value of nIndexesWas reflects the number of indexes before removing this index.
+其中nIndexsWas的值反映了删除此索引之前的索引数量。
+
+Remove All Indexes
+You can also use the db.collection.dropIndexes() to remove all indexes except for the _id index from a collection.
+您还可以使用db.collection.dropIndexes()从集合中删除除_id索引外的所有索引。
+For example, the following command removes all indexes from the accounts collection:
+例如，以下命令将从帐户集合中删除所有索引：
+db.accounts.dropIndexes()
+These shell helpers provide wrappers around the dropIndexes database command. Your client library may have a different or additional interface for these operations.
+这些shell帮助程序围绕dropIndex数据库命令提供包装器。您的客户端库可能具有用于这些操作的不同或附加接口。
+
+
+
+
+
+
