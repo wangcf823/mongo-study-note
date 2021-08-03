@@ -68,6 +68,87 @@ db.accounts.dropIndexes()
 These shell helpers provide wrappers around the dropIndexes database command. Your client library may have a different or additional interface for these operations.
 这些shell帮助程序围绕dropIndex数据库命令提供包装器。您的客户端库可能具有用于这些操作的不同或附加接口。
 
+Modify an Index
+To modify an existing index, you need to drop and recreate the index. The exception to this rule is TTL indexes, which can be modified via the collMod command in conjunction with the index collection flag.
+要修改现有索引，您需要删除并重新创建索引。此规则的例外是TTL索引，可以通过collMod命令与索引收集标志一起修改。
+
+Find Inconsistent Indexes across Shards在分片中查找不一致的索引
+A sharded collection has an inconsistent index if the collection does not have the exact same indexes (including the index options) on each shard that contains chunks for the collection. Although inconsistent indexes should not occur during normal operations, inconsistent indexes can occur , such as:
+如果分片集合在包含集合块的每个分片上没有完全相同的索引（包括索引选项），则分片集合具有不一致的索引。虽然在正常操作期间不应出现不一致的索引，但可能会出现不一致的索引，例如：
+When a user is creating an index with a unique key constraint and one shard contains a chunk with duplicate documents. In such cases, the create index operation may succeed on the shards without duplicates but not on the shard with duplicates.
+当用户创建具有唯一键约束的索引时，并且一个分片包含具有重复文档的块。在这种情况下，创建索引操作可能在没有重复的分片上成功，但在有重复的分片上失败。
+When a user is creating an index across the shards in a rolling manner (i.e. manually building the index one by one across the shards) but either fails to build the index for an associated shard or incorrectly builds an index with different specification.
+当用户以滚动方式跨分片创建索引（即跨分片手动逐个构建索引），但无法为关联分片构建索引，或者错误地构建了具有不同规格的索引时。
+
+定义以下聚合管道：
+const pipeline = [
+    // Get indexes and the shards that they belong to.
+    {$indexStats: {}},
+    // Attach a list of all shards which reported indexes to each document from $indexStats.
+    {$group: {_id: null, indexDoc: {$push: "$$ROOT"}, allShards: {$addToSet: "$shard"}}},
+    // Unwind the generated array back into an array of index documents.
+    {$unwind: "$indexDoc"},
+    // Group by index name.
+    {
+        $group: {
+            "_id": "$indexDoc.name",
+            "shards": {$push: "$indexDoc.shard"},
+            // Convert each index specification into an array of its properties
+            // that can be compared using set operators.
+            "specs": {$push: {$objectToArray: {$ifNull: ["$indexDoc.spec", {}]}}},
+            "allShards": {$first: "$allShards"}
+        }
+    },
+    // Compute which indexes are not present on all targeted shards and
+    // which index specification properties aren't the same across all shards.
+    {
+        $project: {
+            missingFromShards: {$setDifference: ["$allShards", "$shards"]},
+            inconsistentProperties: {
+                 $setDifference: [
+                     {$reduce: {
+                         input: "$specs",
+                         initialValue: {$arrayElemAt: ["$specs", 0]},
+                         in: {$setUnion: ["$$value", "$$this"]}}},
+                     {$reduce: {
+                         input: "$specs",
+                         initialValue: {$arrayElemAt: ["$specs", 0]},
+                         in: {$setIntersection: ["$$value", "$$this"]}}}
+                 ]
+             }
+        }
+    },
+    // Only return output that indicates an index was inconsistent, i.e. either a shard was missing
+    // an index or a property on at least one shard was not the same on all others.
+    {
+        $match: {
+            $expr:
+                {$or: [
+                    {$gt: [{$size: "$missingFromShards"}, 0]},
+                    {$gt: [{$size: "$inconsistentProperties"}, 0]},
+                ]
+            }
+        }
+    },
+    // Output relevant fields.
+    {$project: {_id: 0, indexName: "$$ROOT._id", inconsistentProperties: 1, missingFromShards: 1}}
+];
+
+Run the aggregation pipeline for the sharded collection to test. For example, to test if the sharded collection test.reviews has inconsistent indexes across its associated shards:
+运行要测试的分片集合的聚合管道。例如，要测试分片集合test.reviews在其关联的分片中是否具有不一致的索引：
+db.getSiblingDB("test").reviews.aggregate(pipeline)
+
+If the collection has inconsistent indexes, the aggregation for that collection returns details regarding the inconsistent indexes:
+如果集合具有不一致的索引，则该集合的聚合将返回有关不一致索引的详细信息：
+{ "missingFromShards" : [ "shardB" ], "inconsistentProperties" : [ ], "indexName" : "page_1_score_1" }
+{ "missingFromShards" : [ ], "inconsistentProperties" : [ { "k" : "expireAfterSeconds", "v" : 60 }, { "k" : "expireAfterSeconds", "v" : 600 } ], "indexName" : "reviewDt_1" }
+The returned documents indicate two inconsistencies for the sharded collection test.reviews:
+返回的文档指示分片集合test.reviews的两个不一致：
+An index named page_1_score_1 is missing from the collection on shardB.
+An index named reviewDt_1 has inconsistent properties across the collection's shards, specifically, the expireAfterSeconds properties differ.
+
+
+
 
 
 
