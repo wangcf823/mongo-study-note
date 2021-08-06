@@ -1,0 +1,113 @@
+The best indexes for your application must take a number of factors into account, including the kinds of queries you expect, the ratio of reads to writes, and the amount of free memory on your system.
+应用程序的最佳索引必须考虑许多因素，包括预期的查询类型、读与写的比率以及系统上的可用内存量。
+When developing your indexing strategy you should have a deep understanding of your application's queries. Before you build indexes, map out the types of queries you will run so that you can build indexes that reference those fields. Indexes come with a performance cost, but are more than worth the cost for frequent queries on large data sets. Consider the relative frequency of each query in the application and whether the query justifies an index.
+在开发索引策略时，您应该深入了解应用程序的查询。在构建索引之前，请映射出将运行的查询类型，以便可以构建引用这些字段的索引。索引会带来性能成本，但对于大型数据集上的频繁查询来说，索引的成本是非常值得的。考虑应用程序中每个查询的相对频率，以及查询是否证明索引是合理的。
+The best overall strategy for designing indexes is to profile a variety of index configurations with data sets similar to the ones you'll be running in production to see which configurations perform best. Inspect the current indexes created for your collections to ensure they are supporting your current and planned queries. If an index is no longer used, drop the index.
+设计索引的最佳总体策略是使用与您将在生产中运行的数据集相似的数据集分析各种索引配置，以查看哪些配置性能最好。检查为集合创建的当前索引，以确保它们支持当前和计划的查询。如果索引不再使用，请删除索引。
+Generally, MongoDB only uses one index to fulfill most queries. However, each clause of an $or query may use a different index, and in addition, MongoDB can use an intersection of multiple indexes.
+通常，MongoDB只使用一个索引来完成大多数查询。但是，$或查询的每个子句都可能使用不同的索引，此外，MongoDB还可以使用多个索引的交集。
+The following documents introduce indexing strategies:
+以下文档介绍了索引策略：
+Create Indexes to Support Your Queries
+    An index supports a query when the index contains all the fields scanned by the query. Creating indexes that support queries results in greatly increased query performance.
+    当索引包含查询扫描的所有字段时，索引支持查询。创建支持查询的索引会大大提高查询性能。
+    
+Use Indexes to Sort Query Results使用索引对查询结果进行排序
+    To support efficient queries, use the strategies here when you specify the sequential order and sort order of index fields.
+    要支持高效的查询，请在指定索引字段的顺序和排序顺序时使用此处的策略。
+    
+Ensure Indexes Fit in RAM确保索引适合RAM
+    When your index fits in RAM, the system can avoid reading the index from disk and you get the fastest processing.
+    当您的索引适合RAM时，系统可以避免从磁盘读取索引，并获得最快的处理。
+    
+Create Queries that Ensure Selectivity创建确保选择性的查询
+    Selectivity is the ability of a query to narrow results using the index. Selectivity allows MongoDB to use the index for a larger portion of the work associated with fulfilling the query.
+    选择性是查询使用索引缩小结果范围的能力。选择性允许MongoDB将索引用于与完成查询相关的大部分工作。
+    
+    
+Create Indexes to Support Your Queries
+An index supports a query when the index contains all the fields scanned by the query. The query scans the index and not the collection. Creating indexes that support queries results in greatly increased query performance.
+当索引包含查询扫描的所有字段时，索引支持查询。查询扫描索引而不是集合。创建支持查询的索引会大大提高查询性能。
+
+Create a Single-Key Index if All Queries Use the Same, Single Key如果所有查询都使用相同的单键，则创建单键索引
+If you only ever query on a single key in a given collection, then you need to create just one single-key index for that collection. For example, you might create an index on category in the product collection:
+db.products.createIndex( { "category": 1 } )
+
+Create Compound Indexes to Support Several Different Queries
+创建复合索引以支持多个不同的查询
+If you sometimes query on only one key and at other times query on that key combined with a second key, then creating a compound index is more efficient than creating a single-key index. MongoDB will use the compound index for both queries. For example, you might create an index on both category and item.
+如果您有时只查询一个键，而有时查询该键与第二个键结合使用，那么创建复合索引比创建单键索引更有效。MongoDB将对两个查询使用复合索引。例如，您可以在类别和项目上创建索引。
+db.products.createIndex( { "category": 1, "item": 1 } )
+This allows you both options. You can query on just category, and you also can query on category combined with item. A single compound index on multiple fields can support all the queries that search a "prefix" subset of those fields.
+这允许您两个选项。您可以只查询类别，也可以查询类别和项目组合。多个字段上的单个复合索引可以支持搜索这些字段的“前缀”子集的所有查询。
+
+EXAMPLE
+The following index on a collection:
+{ x: 1, y: 1, z: 1 }
+Can support queries that the following indexes support:
+{ x: 1 }
+{ x: 1, y: 1 }
+There are some situations where the prefix indexes may offer better query performance: for example if z is a large array.
+在某些情况下，前缀索引可能提供更好的查询性能：例如，如果z是一个大数组。
+The { x: 1, y: 1, z: 1 } index can also support many of the same queries as the following index:
+{ x: 1, y: 1, z: 1 }索引还可以支持许多与以下索引相同的查询：
+{ x: 1, z: 1 }
+Also, { x: 1, z: 1 } has an additional use. Given the following query:
+此外，{ x: 1, z: 1 }还有额外的用途。给定以下查询：
+db.collection.find( { x: 5 } ).sort( { z: 1} )
+The { x: 1, z: 1 } index supports both the query and the sort operation, while the { x: 1, y: 1, z: 1 } index only supports the query.
+{ x: 1, z: 1 }索引同时支持查询和排序操作，而{ x: 1, y: 1, z: 1 }索引仅支持查询。
+
+Index Use and Collation索引使用和排序规则
+To use an index for string comparisons, an operation must also specify the same collation. That is, an index with a collation cannot support an operation that performs string comparisons on the indexed fields if the operation specifies a different collation.
+要将索引用于字符串比较，操作还必须指定相同的排序规则。也就是说，如果操作指定了不同的排序规则，则具有排序规则的索引不能支持对索引字段执行字符串比较的操作。
+For example, the collection myColl has an index on a string field category with the collation locale "fr".
+例如，集合myColl在排序规则区域设置为“fr”的字符串字段类别上具有索引。
+db.myColl.createIndex( { category: 1 }, { collation: { locale: "fr" } } )
+The following query operation, which specifies the same collation as the index, can use the index:
+以下查询操作指定与索引相同的排序规则，可以使用索引：
+db.myColl.find( { category: "cafe" } ).collation( { locale: "fr" } )
+However, the following query operation, which by default uses the "simple" binary collator, cannot use the index:
+但是，以下查询操作默认使用“简单”二进制归类器，不能使用索引：
+db.myColl.find( { category: "cafe" } )
+For a compound index where the index prefix keys are not strings, arrays, and embedded documents, an operation that specifies a different collation can still use the index to support comparisons on the index prefix keys.
+对于索引前缀键不是字符串、数组和嵌入文档的复合索引，指定不同排序规则的操作仍可以使用索引来支持对索引前缀键的比较。
+For example, the collection myColl has a compound index on the numeric fields score and price and the string field category; the index is created with the collation locale "fr" for string comparisons:
+例如，集合myColl在数字字段得分和价格以及字符串字段类别上具有复合索引；索引是使用排序规则区域设置“fr”创建的，用于字符串比较：
+db.myColl.createIndex(
+   { score: 1, price: 1, category: 1 },
+   { collation: { locale: "fr" } } )
+The following operations, which use "simple" binary collation for string comparisons, can use the index:
+以下操作使用“简单”二进制排序规则进行字符串比较，可以使用索引：
+db.myColl.find( { score: 5 } ).sort( { price: 1 } )
+db.myColl.find( { score: 5, price: { $gt: NumberDecimal( "10" ) } } ).sort( { price: 1 } )
+The following operation, which uses "simple" binary collation for string comparisons on the indexed category field, can use the index to fulfill only the score: 5 portion of the query:
+以下操作使用“简单”二进制排序规则对索引类别字段进行字符串比较，可以使用索引仅满足分数：查询的5部分：
+db.myColl.find( { score: 5, category: "cafe" } )
+
+
+Ensure Indexes Fit in RAM确保索引适合RAM
+For the fastest processing, ensure that your indexes fit entirely in RAM so that the system can avoid reading the index from disk.
+为了获得最快的处理速度，请确保索引完全适合RAM，以便系统可以避免从磁盘读取索引。
+To check the size of your indexes, use the db.collection.totalIndexSize() helper, which returns data in bytes:
+要检查索引的大小，请使用db.collection.totalIndexSize()帮助程序，该帮助程序返回以字节为单位的数据：
+> db.collection.totalIndexSize()
+4294976499
+The above example shows an index size of almost 4.3 gigabytes. To ensure this index fits in RAM, you must not only have more than that much RAM available but also must have RAM available for the rest of the working set. Also remember:
+上面的示例显示了几乎4.3 GB的索引大小。要确保此索引适合RAM，您不仅必须有足够多的RAM可用，而且还必须有RAM可用于工作集的其余部分。同时请记住：
+If you have and use multiple collections, you must consider the size of all indexes on all collections. The indexes and the working set must be able to fit in memory at the same time.
+如果您拥有并使用多个集合，则必须考虑所有集合上所有索引的大小。索引和工作集必须能够同时放入内存中。
+There are some limited cases where indexes do not need to fit in memory. See Indexes that Hold Only Recent Values in RAM.
+在某些有限的情况下，索引不需要适合内存。请参见RAM中仅保存最近值的索引。
+
+Indexes that Hold Only Recent Values in RAMRAM中仅保存最近值的索引
+Indexes do not have to fit entirely into RAM in all cases. If the value of the indexed field increments with every insert, and most queries select recently added documents; then MongoDB only needs to keep the parts of the index that hold the most recent or "right-most" values in RAM. This allows for efficient index use for read and write operations and minimize the amount of RAM required to support the index.
+在所有情况下，索引不必完全适合RAM。如果索引字段的值随着每次插入而增加，并且大多数查询选择最近添加的文档；那么MongoDB只需要将索引中保存最新或“最右边”值的部分保留在RAM中。这允许高效地使用索引进行读写操作，并最大限度地减少支持索引所需的RAM量。
+
+
+
+
+
+
+
+  
