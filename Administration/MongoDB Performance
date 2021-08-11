@@ -1,0 +1,76 @@
+As you develop and operate applications with MongoDB, you may need to analyze the performance of the application and its database. When you encounter degraded performance, it is often a function of database access strategies, hardware availability, and the number of open database connections.
+当您使用MongoDB开发和操作应用程序时，您可能需要分析应用程序及其数据库的性能。当您遇到性能下降时，它通常是数据库访问策略、硬件可用性和打开数据库连接数的函数。
+Some users may experience performance limitations as a result of inadequate or inappropriate indexing strategies, or as a consequence of poor schema design patterns. Locking Performance discusses how these can impact MongoDB's internal locking.
+一些用户可能会因为不充分或不适当的索引策略，或由于糟糕的模式设计模式而遇到性能限制。锁定性能讨论了这些如何影响MongoDB的内部锁定。
+
+Performance issues may indicate that the database is operating at capacity and that it is time to add additional capacity to the database. In particular, the application's working set should fit in the available physical memory.
+性能问题可能表明数据库正在以容量运行，并且是时候向数据库添加额外容量了。特别是，应用程序的工作集应适合可用的物理内存。
+
+In some cases performance issues may be temporary and related to abnormal traffic load. As discussed in Number of Connections, scaling can help relax excessive traffic.
+在某些情况下，性能问题可能是暂时的，与异常流量负载有关。如连接数中所述，扩展可以帮助缓解过多的流量。
+
+Locking Performance
+MongoDB uses a locking system to ensure data set consistency. If certain operations are long-running or a queue forms, performance will degrade as requests and operations wait for the lock.
+MongoDB使用锁定系统来确保数据集的一致性。如果某些操作长时间运行或形成队列，则随着请求和操作等待锁，性能将下降。
+
+Lock-related slowdowns can be intermittent. To see if the lock has been affecting your performance, refer to the locks section and the globalLock section of the serverStatus output.
+与锁定相关的减速可能是间歇性的。要查看锁是否影响了性能，请参阅serverStatus输出的锁部分和globalLock部分。
+
+Dividing locks.<type>.timeAcquiringMicros by locks.<type>.acquireWaitCount can give an approximate average wait time for a particular lock mode.
+将锁.<type>.timeAcquiringMicros除以锁.<type>.acquireWaitCount可以给出特定锁模式的近似平均等待时间。
+
+locks.<type>.deadlockCount provide the number of times the lock acquisitions encountered deadlocks.
+locks.<type>.deadlockCount提供锁获取遇到死锁的次数。
+
+If globalLock.currentQueue.total is consistently high, then there is a chance that a large number of requests are waiting for a lock. This indicates a possible concurrency issue that may be affecting performance.
+如果globalLock.currentQueue.total始终较高，则有可能有大量请求正在等待锁。这表示可能存在影响性能的并发问题。
+
+If globalLock.totalTime is high relative to uptime, the database has existed in a lock state for a significant amount of time.
+如果globalLock.totalTime相对于正常运行时间较高，则数据库已处于锁定状态相当长的时间。
+
+Long queries can result from ineffective use of indexes; non-optimal schema design; poor query structure; system architecture issues; or insufficient RAM resulting in disk reads.
+长查询可能是由于索引使用无效；模式设计不最佳；查询结构差；系统体系结构问题；或RAM不足导致磁盘读取。
+
+Number of Connections
+In some cases, the number of connections between the applications and the database can overwhelm the ability of the server to handle requests. The following fields in the serverStatus document can provide insight:
+在某些情况下，应用程序和数据库之间的连接数可能会超过服务器处理请求的能力。serverStatus文档中的以下字段可以提供见解：
+
+connections is a container for the following two fields:
+连接是以下两个字段的容器：
+      connections.current the total number of current clients connected to the database instance.
+      connections.current   连接到数据库实例的当前客户端总数。
+      connections.available the total number of unused connections available for new clients.
+      connections.available   新客户端可用的未使用连接总数。
+  
+If there are numerous concurrent application requests, the database may have trouble keeping up with demand. If this is the case, then you will need to increase the capacity of your deployment. 
+如果有大量并发应用程序请求，数据库可能无法跟上需求。如果是这种情况，则您需要增加部署的容量。
+
+For write-heavy applications, deploy sharding and add one or more shards to a sharded cluster to distribute load among mongod instances.
+对于写重度应用，部署分片，并将一个或多个分片添加到分片集群中，以在mongod实例之间分配负载。
+
+Spikes in the number of connections can also be the result of application or driver errors. All of the officially supported MongoDB drivers implement connection pooling, which allows clients to use and reuse connections more efficiently. An extremely high number of connections, particularly without corresponding workload, is often indicative of a driver or other configuration error.
+连接数的峰值也可能是应用程序或驱动程序错误的结果。所有官方支持的MongoDB驱动程序都实现了连接池，这允许客户端更有效地使用和重用连接。极高的连接数，特别是没有相应的工作负载，通常指示驱动程序或其他配置错误。
+
+Unless constrained by system-wide limits, the maximum number of incoming connections supported by MongoDB is configured with the maxIncomingConnections setting. On Unix-based systems, system-wide limits can be modified using the ulimit command, or by editing your system's /etc/sysctl file. See UNIX ulimit Settings for more information.
+除非受系统范围限制的限制，否则MongoDB支持的最大传入连接数将使用maxIncomConnections设置配置。在基于Unix的系统上，可以使用ulimit命令或编辑系统的/etc/sysctl文件修改系统范围的限制。有关详细信息，请参见UNIX ulimit设置。
+
+Database Profiling
+The Database Profiler collects detailed information about operations run against a mongod instance. The profiler's output can help to identify inefficient queries and operations.
+Database Profiler收集有关针对mongod实例运行的操作的详细信息。探查器的输出有助于识别低效的查询和操作。
+
+You can enable and configure profiling for individual databases or for all databases on a mongod instance. Profiler settings affect only a single mongod instance and will not propagate across a replica set or sharded cluster.
+您可以为单个数据库或mongod实例上的所有数据库启用和配置分析。Profiler设置仅影响单个mongod实例，不会跨副本集或分片群集传播。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
