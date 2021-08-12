@@ -1,0 +1,126 @@
+MongoDB runs as a standard program. You can start MongoDB from a command line by issuing the mongod command and specifying options. For a list of options, see the mongod reference. MongoDB can also run as a Windows service. For details, see Start MongoDB Community Edition as a Windows Service. To install MongoDB, see Install MongoDB.
+MongoDB作为标准程序运行。您可以通过发出mongod命令并指定选项从命令行启动MongoDB。有关选项列表，请参见mongod参考。MongoDB也可以作为Windows服务运行。有关详细信息，请参见将MongoDB社区版作为Windows服务启动。要安装MongoDB，请参见安装MongoDB。
+The following examples assume the directory containing the mongod process is in your system paths. The mongod process is the primary database process that runs on an individual server. mongos provides a coherent MongoDB interface equivalent to a mongod from the perspective of a client. The mongo binary provides the administrative shell.
+以下示例假设包含mongod进程的目录位于系统路径中。mongod进程是运行在单个服务器上的主数据库进程，mongos提供了一个连贯的MongoDB接口，从客户端的角度来看，相当于mongod。mongo二进制文件提供管理shell。
+This document discusses the mongod process; however, some portions of this document may be applicable to mongos instances.
+本文档讨论了mongod过程；但是，本文档的某些部分可能适用于mongos实例。
+
+Start mongod Processes
+By default, MongoDB listens for connections from clients on port 27017, and stores data in the /data/db directory.
+On Windows, this path is on the drive from which you start MongoDB. For example, if you do not specify a --dbpath, starting a MongoDB server on the C:\ drive stores all data files in C:\data\db.
+To start MongoDB using all defaults, issue the following command at the system shell:
+要使用所有默认值启动MongoDB，请在系统shell中发出以下命令：
+mongod
+
+Specify a Data Directory
+If you want mongod to store data files at a path other than /data/db you can specify a dbPath. The dbPath must exist before you start mongod. If it does not exist, create the directory and the permissions so that mongod can read and write data to this path. For more information on permissions, see the security operations documentation.
+To specify a dbPath for mongod to use as a data directory, use the --dbpath option. The following invocation will start a mongod instance and store data in the /srv/mongodb path
+mongod --dbpath /srv/mongodb/
+
+Specify a TCP Port
+Only a single process can listen for connections on a network interface at a time. If you run multiple mongod processes on a single machine, or have other processes that must use this port, you must assign each a different port to listen on for client connections.
+
+To specify a port to mongod, use the --port option on the command line. The following command starts mongod listening on port 12345:
+mongod --port 12345
+
+Start mongod as a Daemon
+To run a mongod process as a daemon (i.e. fork), and write its output to a log file, use the --fork and --logpath options. You must create the log directory; however, mongod will create the log file if it does not exist.
+The following command starts mongod as a daemon and records log output to  /var/log/mongodb/mongod.log.
+mongod --fork --logpath /var/log/mongodb/mongod.log
+
+Additional Configuration Options
+
+Stop mongod Processes
+In a clean shutdown a mongod completes all pending operations, flushes all data to data files, and closes all data files. Other shutdowns are unclean and can compromise the validity of the data files.
+在干净的关闭中，mongod完成所有挂起的操作，将所有数据刷新到数据文件，并关闭所有数据文件。其他关闭是不干净的，可能会损害数据文件的有效性。
+
+To ensure a clean shutdown, always shutdown mongod instances using one of the following methods:
+Use shutdownServer()
+Shut down the mongod from the mongo shell using the db.shutdownServer() method as follows:
+use admin
+db.shutdownServer()
+Calling the same method from a init script accomplishes the same result.从init脚本调用相同的方法将获得相同的结果。
+For systems with authorization enabled, users may only issue db.shutdownServer() when authenticated to the admin database or via the localhost interface on systems without authentication enabled.
+对于启用了授权的系统，用户只能在对管理数据库进行身份验证或通过未启用身份验证的系统上的localhost接口发出db.shutdownServer()。
+
+Use --shutdown
+Supported on Linux only. From the command line, shut down the mongod using the --shutdown option:
+mongod --shutdown
+
+Use CTRL-C
+When running the mongod instance in interactive mode (i.e. without --fork), issue Control-C to perform a clean shutdown.
+在交互式模式下运行mongod实例时（即没有--fork），发出Control-C以执行干净的关闭。
+
+Use kill
+Supported on Linux and macOS only. From the command line, shut down a specific mongod instance using one of the following commands:
+仅在Linux和macOS上受支持。在命令行中，使用以下命令之一关闭特定的mongod实例：
+kill <mongod process ID>
+kill -2 <mongod process ID>
+
+SIGTERM and Replica Sets
+Starting in MongoDB 4.0.8 (and 3.6.15), if a replica set primary receives a SIGTERM, the primary attempts to step down before shutting down.
+从MongoDB 4.0.8（和3.6.15）开始，如果副本集主节点收到SIGTERM，则主节点将尝试在关闭之前退出。
+    If the step down succeeds, the instance does not vote in the ensuing election of the new primary, and continues its shutdown.
+    如果下台成功，该实例不会在随后的新初选选举中投票，并继续关闭。
+    If the step down fails, the instance continues its shutdown.如果降级失败，实例将继续关闭。
+    
+SIGKILL
+      WARNING
+          Never use kill -9 (i.e. SIGKILL) to terminate a mongod instance.
+          
+ Troubleshoot mongod Processes   mongod进程故障排除
+ 
+Generate a Backtrace生成回溯
+Starting in MongoDB 4.4, mongod and mongos processes running on Linux will now log a backtrace for each of their running threads upon receipt of a SIGUSR2 signal. This backtrace can be analyzed for diagnostic information or provided to MongoDB support as needed. This functionality is currently available only on the x86_64 architecture.
+从MongoDB 4.4开始，在Linux上运行的mongod和mongos进程现在将在收到SIGUSR2信号时记录其每个运行线程的回溯。可以分析此回溯以获取诊断信息，也可以根据需要提供给MongoDB支持。此功能目前仅在x86_64体系结构上可用。
+
+To issue a SIGUSR2 signal to a running mongod process, use the following command:
+要向正在运行的mongod进程发出SIGUSR2信号，请使用以下命令：
+kill -SIGUSR2 <mongod process ID>
+
+The resulting backtrace data is written to the mongod logfile as configured with --logpath.
+生成的回溯数据将按照--logpath配置写入mongod日志文件。
+
+Stop a Replica Set
+Procedure
+If the mongod is the primary in a replica set, the shutdown process for this mongod instance has the following steps:
+1\Check how up-to-date the secondaries are.检查辅助设备的最新情况。
+2\If no secondary is within 10 seconds of the primary, mongod will return a message that it will not shut down. You can pass the shutdown command a timeoutSecs argument to wait for a secondary to catch up.
+  如果在主服务器的10秒内没有辅助服务器，mongod将返回一条消息，说明它不会关闭。您可以向shutdown命令传递timeoutSecs参数，以等待辅助设备赶上。
+3\If there is a secondary within 10 seconds of the primary, the primary will step down and wait for the secondary to catch up.
+  如果在主设备的10秒内有辅助设备，则主设备将下台并等待辅助设备赶上。
+4\After 60 seconds or once the secondary has caught up, the primary will shut down.60秒后或辅助设备赶上后，主设备将关闭。
+
+Force Replica Set Shutdown强制关闭副本集
+If there is no up-to-date secondary and you want the primary to shut down, issue the shutdown command with the force argument, as in the following mongo shell operation:
+如果没有最新的辅助设备，并且您希望主设备关闭，请使用强制参数发出关闭命令，如以下mongo shell操作所示：
+db.adminCommand({shutdown : 1, force : true})
+
+To keep checking the secondaries for a specified number of seconds if none are immediately up-to-date, issue shutdown with the timeoutSecs argument. MongoDB will keep checking the secondaries for the specified number of seconds if none are immediately up-to-date. If any of the secondaries catch up within the allotted time, the primary will shut down. If no secondaries catch up, it will not shut down.
+要在指定的秒数内继续检查辅助设备，如果没有辅助设备立即是最新的，请使用timeoutSecs参数发出关闭。如果没有辅助设备立即是最新的，MongoDB将在指定的秒数内继续检查辅助设备。如果任何辅助设备在分配的时间内赶上，主设备将关闭。如果没有辅助设备赶上，它将不会关闭。
+
+The following command issues shutdown with timeoutSecs set to 5:
+以下命令发出关闭，将timeoutSecs设置为5：
+db.adminCommand({shutdown : 1, timeoutSecs : 5})
+
+Alternately you can use the timeoutSecs argument with the db.shutdownServer() method:或者，您可以将timeoutSecs参数与db.shutdownServer()方法一起使用：
+db.shutdownServer({timeoutSecs : 5})
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
