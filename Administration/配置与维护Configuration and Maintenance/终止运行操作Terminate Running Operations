@@ -1,0 +1,63 @@
+终止运行操作
+Overview概述
+MongoDB provides two facilitates to terminate running operations: maxTimeMS() and db.killOp(). Use these operations as needed to control the behavior of operations in a MongoDB deployment.
+MongoDB提供了两种终止运行操作的方便：maxTimeMS()和db.killOp()。根据需要使用这些操作来控制MongoDB部署中操作的行为。
+Available Procedures可用程序
+maxTimeMS
+The maxTimeMS() method sets a time limit for an operation. When the operation reaches the specified time limit, MongoDB interrupts the operation at the next interrupt point.
+maxTimeMS()方法设置操作的时间限制。当操作达到指定的时间限制时，MongoDB将在下一个中断点中断操作。
+
+Terminate a Query
+From the mongo shell, use the following method to set a time limit of 30 milliseconds for this query:
+从mongo shell中，使用以下方法为此查询设置30毫秒的时间限制：
+db.location.find( { "town": { "$regex": "(Pine Lumber)",
+                              "$options": 'i' } } ).maxTimeMS(30)
+Terminate a Command
+Consider a potentially long running operation using distinct to return each distinct collection field that has a city key:
+考虑使用不同返回具有城市键的每个不同收集字段的潜在长期运行操作：
+db.runCommand( { distinct: "collection",
+                 key: "city" } )
+                 
+You can add the maxTimeMS field to the command document to set a time limit of 45 milliseconds for the operation:
+您可以将maxTimeMS字段添加到命令文档中，以将操作的时间限制设置为45毫秒：
+db.runCommand( { distinct: "collection",
+                 key: "city",
+                 maxTimeMS: 45 } )
+                 
+db.getLastError() and db.getLastErrorObj() will return errors for interrupted options:
+{ "n" : 0,
+  "connectionId" : 1,
+  "err" : "operation exceeded time limit",
+  "ok" : 1 }
+
+
+killOp  
+The db.killOp() method interrupts a running operation at the next interrupt point. db.killOp() identifies the target operation by operation ID.
+db.killOp()方法在下一个中断点中断正在运行的操作。db.killOp()通过操作ID标识目标操作。
+db.killOp(<opId>)
+
+WARNING
+  Terminate running operations with extreme caution. Only use db.killOp() to terminate operations initiated by clients and do not terminate internal database operations.
+  请极其谨慎地终止正在运行的操作。仅使用db.killOp()终止客户端启动的操作，而不终止内部数据库操作。
+  
+Sharded Cluster
+
+Starting in MongoDB 4.0, the killOp command can be run on a mongos and can kill queries (i.e. read operations) that span shards in a cluster. The killOp command from the mongos does not propagate to the shards when the operation to be killed is a write operation.
+从MongoDB 4.0开始，killOp命令可以在mongos上运行，并可以杀死跨越集群中分片的查询（即读操作）。当要杀死的操作是写操作时，来自mongos的killOp命令不会传播到分片。
+
+For more information on killing operations on a sharded cluster, see:
+Kill Read Operations
+Kill Write Operations
+
+For information on how to list sharding operations that are active on a mongos, see the localOps parameter in $currentOp.
+有关如何列出mongos上活动的分片操作的信息，请参见$currentOp中的localOps参数。
+
+
+
+
+
+
+  
+  
+
+
