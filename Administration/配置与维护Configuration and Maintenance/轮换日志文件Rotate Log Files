@@ -1,0 +1,102 @@
+Overview
+Rotate Log Files
+Overview
+When used with the --logpath option or systemLog.path setting, mongod and mongos instances report a live account of all activity and operations to a log file. When reporting activity data to a log file, by default, MongoDB only rotates logs in response to the logRotate command, or when the mongod or mongos process receives a SIGUSR1 signal from the operating system.
+
+MongoDB's standard log rotation approach archives the current log file and starts a new one. To do this, the mongod or mongos instance renames the current log file by appending a UTC timestamp to the filename, in ISODate format. It then opens a new log file, closes the old log file, and sends all new log entries to the new log file.
+
+You can also configure MongoDB to support the Linux/Unix logrotate utility by setting systemLog.logRotate or --logRotate to reopen. With reopen, mongod or mongos closes the log file, and then reopens a log file with the same name, expecting that another process renamed the file prior to rotation.
+
+Finally, you can configure mongod to send log data to the syslog using the --syslog option. In this case, you can take advantage of alternate log rotation tools.
+
+TIP
+See also:
+For information on logging, see the Process Logging section.
+
+Default Log Rotation Behavior
+By default, MongoDB uses the --logRotate rename behavior. With rename, mongod or mongos renames the current log file by appending a UTC timestamp to the filename, opens a new log file, closes the old log file, and sends all new log entries to the new log file.
+
+1
+Start a mongod instance.
+mongod -v --logpath /var/log/mongodb/server1.log
+
+You can also explicitly specify --logRotate rename.
+
+2
+List the log files
+In a separate terminal, list the matching files:
+
+ls /var/log/mongodb/server1.log*
+
+The results should include one log file, server1.log.
+
+3
+Rotate the log file.
+Rotate the log file by issuing the logRotate command from the admin database in a mongo shell:
+
+db.adminCommand( { logRotate : 1 } )
+
+4
+View the new log files
+List the new log files to view the newly-created log:
+
+ls /var/log/mongodb/server1.log*
+
+There should be two log files listed: server1.log, which is the log file that mongod or mongos made when it reopened the log file, and server1.log.<timestamp>, the renamed original log file.
+
+Rotating log files does not modify the "old" rotated log files. When you rotate a log, you rename the server1.log file to include the timestamp, and a new, empty server1.log file receives all new log input.
+
+Log Rotation with --logRotate reopen
+Log rotation with --logRotate reopen closes and opens the log file following the typical Linux/Unix log rotate behavior.
+
+1
+Start a mongod instance, specifying the reopen --logRotate behavior.
+mongod -v --logpath /var/log/mongodb/server1.log --logRotate reopen --logappend
+
+You must use the --logappend option with --logRotate reopen.
+
+2
+List the log files
+In a separate terminal, list the matching files:
+
+ls /var/log/mongodb/server1.log*
+
+The results should include one log file, server1.log.
+
+3
+Rotate the log file.
+Rotate the log file by issuing the logRotate command from the admin database in a mongo shell:
+
+db.adminCommand( { logRotate : 1 } )
+
+You should rename the log file using an external process, following the typical Linux/Unix log rotate behavior.
+
+Syslog Log Rotation
+With syslog log rotation, mongod sends log data to the syslog rather than writing it to a file.
+
+Starting in version 4.2, MongoDB includes the component in its log messages to syslog.
+
+1
+Start a mongod instance with the --syslog option
+mongod --syslog
+
+Do not include --logpath. Since --syslog tells mongod to send log data to the syslog, specifying a --logpath will causes an error.
+
+To specify the facility level used when logging messages to the syslog, use the --syslogFacility option or systemLog.syslogFacility configuration setting.
+
+2
+Rotate the log.
+Store and rotate the log output using your systems default log rotation mechanism.
+
+Forcing a Log Rotation with SIGUSR1
+For Linux and Unix-based systems, you can use the SIGUSR1 signal to rotate the logs for a single process.
+
+For example, if a running mongod instance has a process ID (PID) of 2200, the following command rotates the log file for that instance on Linux:
+
+kill -SIGUSR1 2200
+
+Interaction with Audit Logs
+If auditing is enabled, the logRotate command also rotates the audit log.
+
+
+
