@@ -1,0 +1,19 @@
+In sharded clusters, you can create zones of sharded data based on the shard key. You can associate each zone with one or more shards in the cluster. A shard can associate with any number of zones. In a balanced cluster, MongoDB migrates chunks covered by a zone only to those shards associated with the zone.
+在分片集群中，您可以根据分片密钥创建分片数据的区域。您可以将每个区域与集群中的一个或多个分片关联。分片可以关联任意数量的区域。在平衡集群中，MongoDB仅将区域覆盖的块迁移到与该区域关联的分片中。
+
+Some common deployment patterns where zones can be applied are as follows:
+可以应用区域的一些常见部署模式如下：
+Isolate a specific subset of data on a specific set of shards.
+隔离特定分片集上的特定数据子集。
+Ensure that the most relevant data reside on shards that are geographically closest to the application servers.
+确保最相关的数据驻留在地理上最接近应用程序服务器的分片上。
+Route data to shards based on the hardware / performance of the shard hardware.
+根据分片硬件的硬件/性能将数据路由到分片。
+
+The following image illustrates a sharded cluster with three shards and two zones. The A zone represents a range with a lower boundary of 1 and an upper bound of 10. The B zone represents a range with a lower boundary of 10 and an upper boundary of 20. Shards Alpha and Beta have the A zone. Shard Beta also has the B zone. Shard Charlie has no zones associated with it. The cluster is in a steady state and no chunks violate any of the zones.
+下图说明了一个具有三个分片和两个区域的分片群集。A区表示下边界为1，上边界为10的范围。B区表示下边界为10，上边界为20的范围。碎片Alpha和Beta具有A区。Shard Beta也有B区。碎片查理没有与之关联的区域。群集处于稳定状态，没有任何块违反任何区域。
+
+
+
+
+
