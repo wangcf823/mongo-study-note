@@ -1,0 +1,29 @@
+MongoDB部署中的工作负载隔离
+Operational Overview
+MongoDB includes a number of features that allow database administrators and developers to isolate workload by functional or geographical groupings.
+MongoDB包括许多功能，允许数据库管理员和开发人员按功能或地理分组隔离工作负载。
+This capability provides "data center awareness," which allows applications to target MongoDB deployments with consideration of the physical location of the mongod instances. MongoDB supports segmentation of operations across different dimensions, which may include multiple data centers and geographical regions in multi-data center deployments, racks, networks, or power circuits in single data center deployments.
+此功能提供“数据中心感知”，允许应用程序在考虑mongod实例的物理位置的情况下瞄准MongoDB部署。MongoDB支持跨不同维度的操作细分，这些维度可能包括多数据中心部署中的多个数据中心和地理区域，单个数据中心部署中的机架、网络或电源电路。
+MongoDB also supports workload isolation based on functional or operational parameters, to ensure that certain mongod instances are only used for reporting workloads or that certain high-frequency portions of a sharded collection only exist on specific shards.
+MongoDB还支持基于功能或操作参数的工作负载隔离，以确保某些mongod实例仅用于报告工作负载，或者分片集合的某些高频部分仅存在于特定分片上。
+
+Specifically, with MongoDB, you can:
+ensure write operations propagate to specific members of a replica set, or to specific members of replica sets.
+确保写入操作传播到副本集的特定成员或副本集的特定成员。
+ensure that specific members of a replica set respond to queries.
+确保副本集的特定成员响应查询。
+ensure that specific ranges of your shard key balance onto and reside on specific shards.
+确保分片键的特定范围平衡到特定分片上，并驻留在特定分片上。
+combine the above features in a single distributed deployment, on a per-operation (for read and write operations) and collection (for chunk distribution in sharded clusters distribution) basis.
+在单个分布式部署中组合上述功能，在每个操作（用于读和写操作）和集合（用于分片集群分布中的块分布）的基础上。
+
+For full documentation of these features, see the following documentation in the MongoDB Manual:
+有关这些功能的完整文档，请参见MongoDB手册中的以下文档：
+Read Preferences, which controls how drivers help applications target read operations to members of a replica set.
+读取首选项，它控制驱动程序如何帮助应用程序将读取操作定向到副本集的成员。
+Write Concerns, which controls how MongoDB ensures that write operations propagate to members of a replica set.
+写入关注点，它控制MongoDB如何确保写入操作传播到副本集的成员。
+Replica Set Tags, which control how applications create and interact with custom groupings of replica set members to create custom application-specific read preferences and write concerns.
+副本集标记，它控制应用程序如何创建副本集成员的自定义分组并与之交互，以创建自定义应用程序特定的读取首选项和写入问题。
+Zones in sharded clusters, which allows MongoDB administrators to create zones that represent a group of shards and associate one or more ranges of shard key values to these zones. You can associate each zone with one or more shards in the cluster. A shard can associate with any number of zones. In a balanced cluster, MongoDB directs reads and writes covered by a zone only to the shards inside the zone.
+分片集群中的区域，允许MongoDB管理员创建表示一组分片的区域，并将一个或多个分片键值范围关联到这些区域。您可以将每个区域与集群中的一个或多个分片关联。分片可以关联任意数量的区域。在平衡集群中，MongoDB仅将区域覆盖的读写定向到区域内的分片。
