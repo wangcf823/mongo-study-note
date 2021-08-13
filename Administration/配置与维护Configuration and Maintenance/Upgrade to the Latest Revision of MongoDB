@@ -1,0 +1,13 @@
+
+Upgrade Sharded Clusters
+
+To upgrade a 4.4 sharded cluster:
+1\Disable the cluster's balancer as described in Disable the Balancer.
+2\Upgrade the config servers.
+  To upgrade the config server replica set, use the procedures in Upgrade Replica Sets.
+3\Upgrade each shard.
+  If a shard is a replica set, upgrade the shard using the procedure titled Upgrade Replica Sets.
+  If a shard is a standalone instance, upgrade the shard using the procedure titled Upgrade a MongoDB Instance.
+4\Once the config servers and the shards have been upgraded, upgrade each mongos instance by following the instructions in Upgrade a MongoDB Instance. You can upgrade the mongos instances in any order.
+5\Re-enable the balancer, as described in Enable the Balancer.
+
