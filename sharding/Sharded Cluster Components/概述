@@ -1,0 +1,53 @@
+Sharded Cluster Components
+
+A MongoDB sharded cluster consists of the following components:
+shard: Each shard contains a subset of the sharded data. As of MongoDB 3.6, shards must be deployed as a replica set.
+mongos: The mongos acts as a query router, providing an interface between client applications and the sharded cluster. Starting in MongoDB 4.4, mongos can support hedged reads to minimize latencies.
+config servers: Config servers store metadata and configuration settings for the cluster. As of MongoDB 3.4, config servers must be deployed as a replica set (CSRS).
+
+Production Configuration
+In a production cluster, ensure that data is redundant and that your systems are highly available. Consider the following for a production sharded cluster deployment:
+Deploy Config Servers as a 3 member replica set
+Deploy each Shard as a 3 member replica set
+Deploy one or more mongos routers
+
+Replica Set Distribution
+Where possible, consider deploying one member of each replica set in a site suitable for being a disaster recovery location.
+在可能的情况下，考虑在适合作为灾难恢复位置的站点中部署每个副本集的一个成员。
+
+Number of Shards
+Sharding requires at least two shards to distribute sharded data. Single shard sharded clusters may be useful if you plan on enabling sharding in the near future, but do not need to at the time of deployment.
+分片需要至少两个分片来分发分片数据。如果您计划在不久的将来启用分片，但在部署时不需要启用分片集群，则单个分片集群可能会很有用。
+
+Number of mongos and Distribution
+Deploying multiple mongos routers supports high availability and scalability. A common pattern is to place a mongos on each application server. Deploying one mongos router on each application server reduces network latency between the application and the router.
+部署多个mongos路由器，支持高可用性和可扩展性。一个常见的模式是在每个应用服务器上放置一个mongos。在每台应用服务器上部署一台mongos路由器，可降低应用程序和路由器之间的网络延迟。
+
+Alternatively, you can place a mongos router on dedicated hosts. Large deployments benefit from this approach because it decouples the number of client application servers from the number of mongos instances. This gives greater control over the number of connections the mongod instances serve.
+或者，您可以将mongos路由器放置在专用主机上。大型部署受益于这种方法，因为它将客户端应用程序服务器的数量与mongos实例的数量解耦。这可以更好地控制mongod实例服务的连接数。
+Installing mongos instances on their own hosts allows these instances to use greater amounts of memory. Memory would not be shared with a mongod instance. It is possible to use primary shards to host mongos routers but be aware that memory contention may become an issue on large deployments.
+在自己的主机上安装mongos实例允许这些实例使用更多的内存。内存不会与mongod实例共享。可以使用主分片托管mongos路由器，但请注意，内存争用可能会成为大型部署中的一个问题。
+There is no limit to the number of mongos routers you can have in a deployment. However, as mongos routers communicate frequently with your config servers, monitor config server performance closely as you increase the number of routers. If you see performance degradation, it may be beneficial to cap the number of mongos routers in your deployment.
+部署中可以拥有的mongos路由器数量没有限制。但是，由于mongos路由器经常与配置服务器通信，因此在增加路由器数量时密切监控配置服务器性能。如果您看到性能下降，限制部署中mongos路由器的数量可能是有益的。
+
+Development Configuration
+For testing and development, you can deploy a sharded cluster with a minimum number of components. These non-production clusters have the following components:
+对于测试和开发，您可以部署具有最少数量组件的分片群集。这些非生产群集具有以下组件：
+A replica set config server with one member.
+At least one shard as a single-member replica set.
+One mongos instance.
+
+WARNING
+Use the test cluster architecture for testing and development only.测试集群架构仅用于测试和开发。
+
+
+
+
+
+
+
+
+
+
+
+
