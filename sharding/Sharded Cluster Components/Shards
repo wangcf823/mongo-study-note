@@ -1,0 +1,43 @@
+Shards
+A shard contains a subset of sharded data for a sharded cluster. Together, the cluster's shards hold the entire data set for the cluster.
+
+As of MongoDB 3.6, shards must be deployed as a replica set to provide redundancy and high availability.
+
+Users, clients, or applications should only directly connect to a shard to perform local administrative and maintenance operations.
+
+Performing queries on a single shard only returns a subset of data. Connect to the mongos to perform cluster level operations, including read or write operations.
+
+IMPORTANT
+MongoDB does not guarantee that any two contiguous chunks reside on a single shard.
+MongoDB不保证任何两个连续的块驻留在一个分片上。
+
+Primary Shard
+Each database in a sharded cluster has a primary shard that holds all the un-sharded collections for that database. Each database has its own primary shard. The primary shard has no relation to the primary in a replica set.
+分片群集中的每个数据库都有一个主分片，该分片保存该数据库的所有未分片集合。每个数据库都有自己的主分片。主分片与副本集中的主分片没有关系。
+The mongos selects the primary shard when creating a new database by picking the shard in the cluster that has the least amount of data. mongos uses the totalSize field returned by the listDatabases command as a part of the selection criteria.
+mongos在创建新数据库时，通过选择集群中数据量最少的分片来选择主分片。mongos使用listDatabases命令返回的总大小字段作为选择条件的一部分。
+
+To change the primary shard for a database, use the movePrimary command. The process of migrating the primary shard may take significant time to complete, and you should not access the collections associated to the database until it completes. Depending on the amount of data being migrated, the migration may affect overall cluster operations. Consider the impact to cluster operations and network load before attempting to change the primary shard.
+要更改数据库的主分片，请使用移动主命令。迁移主分片的过程可能需要大量时间才能完成，在数据库完成之前，您不应访问与数据库关联的集合。根据要迁移的数据量，迁移可能会影响整个群集操作。在尝试更改主分片之前，请考虑对群集操作和网络负载的影响。
+When you deploy a new sharded cluster with shards that were previously used as replica sets, all existing databases continue to reside on their original replica sets. Databases created subsequently may reside on any shard in the cluster.
+当您使用以前用作副本集的分片部署新的分片群集时，所有现有数据库将继续驻留在其原始副本集上。随后创建的数据库可以驻留在集群中的任何分片上。
+
+Shard Status
+Use the sh.status() method in the mongo shell to see an overview of the cluster. This reports includes which shard is primary for the database and the chunk distribution across the shards. See sh.status() method for more details.
+使用mongo shell中的sh.status()方法查看群集的概述。此报告包括数据库的主分片以及分片之间的块分布。有关更多详细信息，请参见sh.status()方法。
+
+Sharded Cluster Security
+Use Internal/Membership Authentication to enforce intra-cluster security and prevent unauthorized cluster components from accessing the cluster. You must start each mongod in the cluster with the appropriate security settings in order to enforce internal authentication.
+使用内部/成员身份验证可实施群集内安全性，并防止未经授权的群集组件访问群集。您必须使用适当的安全设置启动群集中的每个mongod，才能强制实施内部身份验证。
+
+See Deploy Sharded Cluster with Keyfile Authentication for a tutorial on deploying a secured sharded cluster.
+有关部署安全分片群集的教程，请参阅使用Keyfile身份验证部署分片群集。
+
+Shard Local Users
+Each shard supports Role-Based Access Control (RBAC) for restricting unauthorized access to shard data and operations. Start each mongod in the replica set with the --auth option to enforce RBAC. Alternatively, enforcing Internal/Membership Authentication for intra-cluster security also enables user access controls via RBAC.
+每个分片支持基于角色的访问控制（RBAC），用于限制对分片数据和操作的未经授权的访问。使用--auth选项启动副本集中的每个mongod以强制RBAC。或者，为群集内安全强制实施内部/成员身份验证还可以通过RBAC实现用户访问控制。
+
+Each shard has its own shard-local users. These users cannot be used on other shards, nor can they be used for connecting to the cluster via a mongos.
+每个分片都有自己的分片本地用户。这些用户不能用于其他分片，也不能用于通过mongos连接到群集。
+
+
