@@ -1,0 +1,59 @@
+Config servers store the metadata for a sharded cluster. The metadata reflects state and organization for all data and components within the sharded cluster. The metadata includes the list of chunks on every shard and the ranges that define the chunks.
+配置服务器存储分片集群的元数据。元数据反映了分片群集中所有数据和组件的状态和组织。元数据包括每个分片上的块列表和定义块的范围。
+The mongos instances cache this data and use it to route read and write operations to the correct shards. mongos updates the cache when there are metadata changes for the cluster, such as Chunk Splits or adding a shard. Shards also read chunk metadata from the config servers.
+mongos实例缓存此数据，并使用它将读写操作路由到正确的分片。mongos在集群发生元数据更改时更新缓存，如分块拆分或添加分片。分片还从配置服务器读取块元数据。
+The config servers also store Authentication configuration information such as Role-Based Access Control or internal authentication settings for the cluster.
+配置服务器还存储身份验证配置信息，如基于角色的访问控制或群集的内部身份验证设置。
+MongoDB also uses the config servers to manage distributed locks.
+MongoDB还使用配置服务器来管理分布式锁。
+Each sharded cluster must have its own config servers. Do not use the same config servers for different sharded clusters.
+每个分片集群都必须有自己的配置服务器。不要为不同的分片集群使用相同的配置服务器。
+
+WARNING
+Administrative operations conducted on config servers may have significant impact on sharded cluster performance and availability. Depending on the number of config servers impacted, the cluster may be read-only or offline for a period of time.
+在配置服务器上执行的管理操作可能会对分片群集的性能和可用性产生重大影响。根据受影响的配置服务器数量，群集可能在一段时间内处于只读或脱机状态。
+
+Replica Set Config Servers
+Starting in MongoDB 3.2, config servers for sharded clusters can be deployed as a replica set (CSRS) instead of three mirrored config servers (SCCC). Using a replica set for the config servers improves consistency across the config servers, since MongoDB can take advantage of the standard replica set read and write protocols for the config data. In addition, using a replica set for config servers allows a sharded cluster to have more than 3 config servers since a replica set can have up to 50 members. To deploy config servers as a replica set, the config servers must run the WiredTiger storage engine.
+从MongoDB 3.2开始，分片集群的配置服务器可以部署为副本集（CRS），而不是三个镜像配置服务器(SCCC)。为配置服务器使用副本集可以提高配置服务器之间的一致性，因为MongoDB可以利用配置数据的标准副本集读写协议。此外，将副本集用于配置服务器允许分片群集具有3个以上的配置服务器，因为副本集最多可以有50个成员。要将配置服务器部署为副本集，配置服务器必须运行WiredTiger存储引擎。
+
+In version 3.4, MongoDB removes support for SCCC config servers.
+在3.4版中，MongoDB删除了对SCCC配置服务器的支持。
+
+The following restrictions apply to a replica set configuration when used for config servers:
+以下限制适用于用于配置服务器的副本集配置：
+Must have zero arbiters.
+Must have no delayed members.
+Must build indexes (i.e. no member should have members[n].buildIndexes setting set to false).
+
+ Read and Write Operations on Config Servers
+ The admin database and the config database exist on the config servers.
+
+Writes to Config Servers
+The admin database contains the collections related to the authentication and authorization as well as the other system.* collections for internal use.
+管理员数据库包含与身份验证和授权以及其他相关的system.*内部使用的收藏。
+
+The config database contains the collections that contain the sharded cluster metadata. MongoDB writes data to the config database when the metadata changes, such as after a chunk migration or a chunk split.
+配置数据库包含包含分片群集元数据的集合。当元数据发生变化时，如块迁移或块拆分后，MongoDB将数据写入config数据库。
+Users should avoid writing directly to the config database in the course of normal operation or maintenance.
+在正常操作或维护过程中，用户应避免直接写入config数据库。
+When writing to the config servers, MongoDB uses a write concern of "majority".
+在写入配置服务器时，MongoDB使用“多数”的写入关注点。
+
+Reads from Config Servers
+MongoDB reads from the admin database for authentication and authorization data and other internal uses.
+
+MongoDB reads from the config database when a mongos starts or after a change in the metadata, such as after a chunk migration. Shards also read chunk metadata from the config servers.
+MongoDB在mongos启动时或元数据更改后（如块迁移后）从配置数据库读取。分片还从配置服务器读取块元数据。
+When reading from the replica set config servers, MongoDB uses a Read Concern level of "majority".
+
+Config Server Availability
+
+
+
+
+
+
+
+
+
