@@ -48,6 +48,38 @@ MongoDB在mongos启动时或元数据更改后（如块迁移后）从配置数�
 When reading from the replica set config servers, MongoDB uses a Read Concern level of "majority".
 
 Config Server Availability
+If the config server replica set loses its primary and cannot elect a primary, the cluster's metadata becomes read only. You can still read and write data from the shards, but no chunk migration or chunk splits will occur until the replica set can elect a primary.
+如果配置服务器复制副本集丢失其主副本集并且无法选择主副本，则群集的元数据将变为只读。您仍然可以从分片中读取和写入数据，但在副本集可以选择主分片之前，不会发生分片迁移或分片拆分。
+In a sharded cluster, mongod and mongos instances monitor the replica sets in the sharded cluster (e.g. shard replica sets, config server replica set).
+在分片集群中，mongod和mongos实例监控分片集群中的副本集（例如分片副本集、配置服务器副本集）。
+If all config servers become unavailable, the cluster can become inoperable. To ensure that the config servers remain available and intact, backups of config servers are critical. The data on the config server is small compared to the data stored in a cluster, and the config server has a relatively low activity load.
+如果所有配置服务器都不可用，群集可能会变得不可操作。为确保配置服务器保持可用和完整，配置服务器的备份至关重要。与存储在集群中的数据相比，配置服务器上的数据较小，并且配置服务器的活动负载相对较低。
+For 3.2 sharded clusters, if the number of consecutive unsuccessful attempts to monitor the config server replica set exceeds replMonitorMaxFailedChecks parameter value, the monitoring mongos or mongod instance becomes unusable until you restart the instance. See v3.2 troubleshooting guide for a workaround.
+对于3.2分片集群，如果监控config服务器副本集的连续失败尝试次数超过了replMonitorMaxFailedChecks参数值，则监控mongos或mongod实例将不可用，直到重新启动实例。有关解决方法，请参阅v3.2故障排除指南。
+
+Sharded Cluster Metadata
+Config servers store metadata in the Config Database.
+IMPORTANT
+Always back up the config database before doing any maintenance on the config server.
+To access the config database, issue the following command from the mongo shell:
+use config
+
+In general, you should never edit the content of the config database directly. The config database contains the following collections:
+通常，您不应直接编辑配置数据库的内容。config数据库包含以下集合：
+changelog
+chunks
+collections
+databases
+lockpings
+locks
+mongos
+settings
+shards
+version
+
+Sharded Cluster Security
+Use Internal/Membership Authentication to enforce intra-cluster security and prevent unauthorized cluster components from accessing the cluster. You must start each mongod in the cluster with the appropriate security settings in order to enforce internal authentication.
+使用内部/成员身份验证可实施群集内安全性，并防止未经授权的群集组件访问群集。您必须使用适当的安全设置启动群集中的每个mongod，才能强制实施内部身份验证。
 
 
 
