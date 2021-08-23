@@ -1,0 +1,94 @@
+MongoDB mongos instances route queries and write operations to shards in a sharded cluster. mongos provide the only interface to a sharded cluster from the perspective of applications. Applications never connect or communicate directly with the shards.
+MongoDB mongos实例将查询和写入操作路由到分片集群中的分片，从应用程序的角度来看，mongos提供了到分片集群的唯一接口。应用程序从不直接与分片连接或通信。
+The mongos tracks what data is on which shard by caching the metadata from the config servers. The mongos uses the metadata to route operations from applications and clients to the mongod instances. A mongos has no persistent state and consumes minimal system resources.
+mongos通过缓存配置服务器中的元数据来跟踪哪个分片上的数据。mongos使用元数据将操作从应用程序和客户端路由到mongod实例。mongos没有持久化状态，消耗的系统资源最小。
+The most common practice is to run mongos instances on the same systems as your application servers, but you can maintain mongos instances on the shards or on other dedicated resources. See also Number of mongos and Distribution.
+最常见的做法是在与应用程序服务器相同的系统上运行mongos实例，但您可以在分片或其他专用资源上维护mongos实例。另请参见mongos的数量和分布。
+
+Routing And Results Process
+A mongos instance routes a query to a cluster by:
+Determining the list of shards that must receive the query.确定必须接收查询的分片列表。
+Establishing a cursor on all targeted shards.在所有目标分片上建立游标。
+
+The mongos then merges the data from each of the targeted shards and returns the result document. Certain query modifiers, such as sorting, are performed on each shard before mongos retrieves the results.
+然后，mongos合并来自每个目标分片的数据，并返回结果文档。在mongos检索结果之前，会对每个分片执行某些查询修饰符，如排序。
+
+Changed in version 3.6: For aggregation operations that run on multiple shards, if the operations do not require running on the database's primary shard, these operations may route the results back to the mongos where the results are then merged.
+3.6版中更改：对于在多个分片上运行的聚合操作，如果这些操作不需要在数据库的主分片上运行，这些操作可能会将结果路由回mongos，然后在mongos中合并结果。
+
+There are two cases in which a pipeline is ineligible to run on mongos.
+有两种情况下，管道没有资格在mongos上运行。
+
+The first case occurs when the merge part of the split pipeline contains a stage which must run on a primary shard. For instance, if $lookup requires access to an unsharded collection in the same database as the sharded collection on which the aggregation is running, the merge is obliged to run on the primary shard.
+第一种情况发生在拆分管道的合并部分包含必须在主分片上运行的阶段时。例如，如果$查找要求访问与运行聚合的分片集合所在的同一数据库中的非分片集合，则合并必须在主分片上运行。
+
+The second case occurs when the merge part of the split pipeline contains a stage which may write temporary data to disk, such as $group, and the client has specified allowDiskUse:true. In this case, assuming that there are no other stages in the merge pipeline which require the primary shard, the merge will run on a randomly-selected shard in the set of shards targeted by the aggregation.
+第二种情况发生在拆分管道的合并部分包含一个阶段，该阶段可能会将临时数据写入磁盘，如$group，并且客户端指定了允许磁盘使用：true。在这种情况下，假设合并管道中没有其他阶段需要主分片，则合并将在聚合目标分片集中随机选择的分片上运行。
+
+For more information on how the work of aggregation is split among components of a sharded cluster query, use explain:true as a parameter to the aggregate() call. The return will include three json objects. mergeType shows where the stage of the merge happens ("primaryShard", "anyShard", or "mongos"). splitPipeline shows which operations in your pipeline have run on individual shards. shards shows the work each shard has done.
+有关如何在分片群集查询的组件之间拆分聚合工作的详细信息，请使用解释：true作为聚合（）调用的参数。返回将包括三个json对象。合并类型显示合并阶段发生的位置（“主Shard”、“anyShard”或“mongos”）。拆分管道显示管道中的哪些操作在单个分片上运行。分片显示每个分片所做的工作。
+
+In some cases, when the shard key or a prefix of the shard key is a part of the query, the mongos performs a targeted operation, routing queries to a subset of shards in the cluster.
+在某些情况下，当分片键或分片键的前缀是查询的一部分时，mongos会执行有针对性的操作，将查询路由到集群中的分片子集。
+
+mongos performs a broadcast operation for queries that do not include the shard key, routing queries to all shards in the cluster. Some queries that do include the shard key may still result in a broadcast operation depending on the distribution of data in the cluster and the selectivity of the query.
+mongos对不包括分片键的查询执行广播操作，将查询路由到集群中的所有分片。某些包含分片键的查询仍可能导致广播操作，具体取决于集群中数据的分布和查询的选择性。
+
+How mongos Handles Query Modifiers
+Sorting
+If the result of the query is not sorted, the mongos instance opens a result cursor that "round robins" results from all cursors on the shards.
+如果查询的结果未排序，mongos实例将打开一个结果游标，该结果游标来自分片上的所有游标。
+Limits
+If the query limits the size of the result set using the limit() cursor method, the mongos instance passes that limit to the shards and then re-applies the limit to the result before returning the result to the client.
+如果查询使用limit()游标方法限制结果集的大小，则mongos实例将该限制传递给分片，然后在将结果返回给客户端之前将限制重新应用于结果。
+Skips
+If the query specifies a number of records to skip using the skip() cursor method, the mongos cannot pass the skip to the shards, but rather retrieves unskipped results from the shards and skips the appropriate number of documents when assembling the complete result.
+如果查询使用skip()游标方法指定要跳过的记录数，则mongos无法将跳过传递给分片。而是从碎片中检索未跳过的结果，并在组装完整结果时跳过适当数量的文档。
+When used in conjunction with a limit(), the mongos will pass the limit plus the value of the skip() to the shards to improve the efficiency of these operations.
+当与limit()结合使用时，mongos将将限制加 skip（）的值传递给分片，以提高这些操作的效率。
+
+Confirm Connection to mongos Instances
+To detect if the MongoDB instance that your client is connected to is mongos, use the hello command. When a client connects to a mongos, hello returns a document with a msg field that holds the string isdbgrid. For example:
+{
+   "isWritablePrimary" : true,
+   "msg" : "isdbgrid",
+   "maxBsonObjectSize" : 16777216,
+   "ok" : 1,
+   ...
+}
+If the application is instead connected to a mongod, the returned document does not include the isdbgrid string.
+
+
+
+Metadata Operations
+mongos uses "majority" write concern for the following operations that affect the sharded cluster metadata:
+mongos对以下影响分片集群元数据的操作使用“多数”写关注：
+Command         Method          Note
+addShard        sh.addShard()
+create          db.createCollection()
+drop            db.collection.drop()
+dropDatabase    db.dropDatabase()       Changed in MongoDB 3.6
+enableSharding  sh.enableSharding()
+movePrimary
+renameCollection  db.collection.renameCollection()
+shardCollection   sh.shardCollection()
+removeShard       setFeatureCompatibilityVersion
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
