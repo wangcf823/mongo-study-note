@@ -1,0 +1,143 @@
+The shard key is either an indexed field or indexed compound fields that determines the distribution of the collection's documents among the cluster's shards.
+分片键是索引字段或索引复合字段，用于确定集合文档在群集分片之间的分布。
+
+Specifically, MongoDB divides the span of shard key values (or hashed shard key values) into non-overlapping ranges of shard key values (or hashed shard key values). Each range is associated with a chunk, and MongoDB attempts to distribute chunks evenly among the shards in the cluster.
+具体来说，MongoDB将分片键值（或散列分片键值）的跨度划分为分片键值（或散列分片键值）的非重叠范围。每个范围都与一个块关联，MongoDB尝试在集群中的分片之间均匀分布块。
+
+The shard key has a direct relationship to the effectiveness of chunk distribution. See Choosing a Shard Key.
+分片键与分片分发的有效性有直接关系。请参见选择分片密钥。
+
+Shard Key Specification分片密钥规格
+You must specify the shard key when you shard the collection. You can use the mongo shell method sh.shardCollection() to shard a collection:
+sh.shardCollection(<namespace>, <key>) // Optional parameters omitted
+namespace       Specify the full namespace of the collection (i.e. "<database>.<collection>") to shard.
+key             Specify a document { <shard key field1>: <1|"hashed">, ... } where
+                1 indicates range-based sharding  1表示基于范围分片
+                "hashed" indicates hashed sharding.哈希”表示哈希分片。
+
+NOTE
+    Shard Key Fields and Values
+    Existence
+      Starting in version 4.4, documents in sharded collections can be missing the shard key fields. A missing shard key falls into the same range as a null-valued shard key. See Missing Shard Key.
+      In version 4.2 and earlier, shard key fields must exist in every document for a sharded collection.
+      从4.4版开始，分片集合中的文档可能会缺少分片关键字段。缺少的分片键与空值分片键属于同一范围。请参阅缺少碎片密钥。
+      在4.2版及更早版本中，分片集合的每个文档中都必须存在分片关键字段。
+      
+      Update Field's Value
+      Starting in MongoDB 4.2, you can update a document's shard key value unless the shard key field is the immutable _id field. Before MongoDB 4.2, a document's shard key field value is immutable.
+      从MongoDB 4.2开始，您可以更新文档的分片键值，除非分片键字段是immutable _id字段。在MongoDB 4.2之前，文档的分片键字段值是不可变的。
+      
+      For more information on the sharding method, see sh.shardCollection().
+
+Refine a Shard Key细化分片键
+Starting in MongoDB 4.4, you can use refineCollectionShardKey to refine a collection's shard key. The refineCollectionShardKey adds a suffix field or fields to the existing key to create the new shard key.
+从MongoDB 4.4开始，您可以使用精化收集ShardKey来精化集合的分片键。将一个或多个后缀字段添加到现有键中，以创建新的分片键。
+For example, you may have an existing orders collection with the shard key { customer_id: 1 }. You can change the shard key by adding a suffix order_id field to the shard key so that { customer_id: 1, order_id: 1 } becomes the new shard key. For more information, see the refineCollectionShardKey command.
+例如，您可能具有具有分片键{ customer_id: 1 }的现有订单集合。您可以通过在分片密钥中添加后缀order_id字段来更改分片密钥，使{客户_id:1,order_id:1}成为新的分片密钥。有关更多信息，请参见精致收集ShardKey命令。
+Refining a collection's shard key allows for a more fine-grained data distribution and can address situations where the existing key has led to jumbo (i.e. indivisible) chunks due to insufficient cardinality.
+细化集合的分片密钥允许更细粒度的数据分布，并可以解决现有密钥由于基数不足而导致巨型（即不可分割）块的情况。
+In MongoDB 4.2 and earlier, the choice of shard key cannot be changed after sharding.
+在MongoDB 4.2及更早版本中，分片后无法更改分片键的选择。
+
+Shard Key Indexes
+All sharded collections must have an index that supports the shard key; i.e. the index can be an index on the shard key or a compound index where the shard key is a prefix of the index.
+所有分片集合都必须具有支持分片键的索引；即，该索引可以是分片键上的索引，也可以是分片键是索引前缀的复合索引。
+If the collection is empty, sh.shardCollection() creates the index on the shard key if such an index does not already exists.
+如果集合为空，则sh.shardCollection()在分片键上创建索引，如果该索引尚不存在。
+If the collection is not empty, you must create the index first before using sh.shardCollection().
+如果集合不为空，则必须先创建索引，然后再使用sh.shardCollection()。
+If you drop the last valid index for the shard key, recover by recreating an index on just the shard key.
+如果删除分片键的最后一个有效索引，请通过仅在分片键上重新创建索引来恢复。
+
+Unique Indexes
+MongoDB can enforce a uniqueness constraint on a ranged shard key index. Through the use of a unique index on the shard key, MongoDB enforces uniqueness on the entire key combination and not individual components of the shard key.
+MongoDB可以对范围分片键索引实施唯一性约束。通过在分片密钥上使用唯一索引，MongoDB在整个密钥组合上强制唯一性，而不是在分片密钥的单个组件上强制唯一性。
+
+For a ranged sharded collection, only the following indexes can be unique:
+the index on the shard key
+a compound index where the shard key is a prefix
+the default _id index; however, the _id index only enforces the uniqueness constraint per shard if the _id field is not the shard key or the prefix of the shard key.
+默认的_id索引；但是，只有当_id字段不是分片键或分片键的前缀时，_id索引才会强制每个分片的唯一性约束。
+
+IMPORTANT
+Uniqueness and the _id Index
+If the _id field is not the shard key or the prefix of the shard key, _id index only enforces the uniqueness constraint per shard and not across shards.
+For example, consider a sharded collection (with shard key {x: 1}) that spans two shards A and B. Because the _id key is not part of the shard key, the collection could have a document with _id value 1 in shard A and another document with _id value 1 in shard B.
+If the _id field is not the shard key nor the prefix of the shard key, MongoDB expects applications to enforce the uniqueness of the _id values across the shards.
+
+The unique index constraints mean that:唯一索引约束意味着：
+For a to-be-sharded collection, you cannot shard the collection if the collection has other unique indexes.
+对于要分片的集合，如果集合有其他唯一索引，则不能分片该集合。
+For an already-sharded collection, you cannot create unique indexes on other fields.
+对于已分片的集合，不能在其他字段上创建唯一索引。
+A unique index stores a null value for a document missing the indexed field; that is a missing index field is treated as another instance of a null index key value. For more information, see Unique Index and Missing Field.
+唯一索引存储缺少索引字段的文档的空值；缺少索引字段将被视为空索引键值的另一个实例。有关详细信息，请参见唯一索引和缺少字段。
+
+To enforce uniqueness on the shard key values, pass the unique parameter as true to the sh.shardCollection() method:
+要对分片键值强制执行唯一性，请将唯一参数作为true传递给sh.shardCollection()方法：
+If the collection is empty, sh.shardCollection() creates the unique index on the shard key if such an index does not already exist.
+If the collection is not empty, you must create the index first before using sh.shardCollection().
+
+Although you can have a unique compound index where the shard key is a prefix, if using unique parameter, the collection must have a unique index that is on the shard key.
+You cannot specify a unique constraint on a hashed index.
+
+Choosing a Shard Key
+The choice of shard key affects the creation and distribution of the chunks across the available shards. This affects the overall efficiency and performance of operations within the sharded cluster.
+
+The ideal shard key allows MongoDB to distribute documents evenly throughout the cluster. See also sharding strategy.
+At minimum, consider the consequences of the cardinality, frequency, and monotonicity of a potential shard key.
+
+
+Collection Size
+When sharding a collection that is not empty, the shard key can constrain the maximum supported collection size for the initial sharding operation only. See Sharding Existing Collection Data Size.
+对不为空的集合进行分片时，分片键只能限制初始分片操作支持的最大集合大小。请参见对现有集合数据大小进行分片。
+
+IMPORTANT
+A sharded collection can grow to any size after successful sharding.
+
+Shard Key Cardinality分片键基数
+The cardinality of a shard key determines the maximum number of chunks the balancer can create. This can reduce or remove the effectiveness of horizontal scaling in the cluster.
+分片键的基数决定了平衡器可以创建的最大块数。这可能会降低或删除集群中水平缩放的有效性。
+A unique shard key value can exist on no more than a single chunk at any given time. If a shard key has a cardinality of 4, then there can be no more than 4 chunks within the sharded cluster, each storing one unique shard key value. This constrains the number of effective shards in the cluster to 4 as well - adding additional shards would not provide any benefit.
+在任何给定时间，唯一的分片键值只能存在于单个块上。如果分片键的基数为4，则分片集群中不能有超过4个块，每个块存储一个唯一的分片键值。这也将群集中的有效分片数量限制为4个-添加额外的分片不会提供任何好处。
+
+Shard Key Frequency分片键频率
+Consider a set representing the range of shard key values - the frequency of the shard key represents how often a given value occurs in the data. If the majority of documents contain only a subset of those values, then the chunks storing those documents become a bottleneck within the cluster. Furthermore, as those chunks grow, they may become indivisible chunks as they cannot be split any further. This reduces or removes the effectiveness of horizontal scaling within the cluster.
+考虑一个表示分片键值范围的集合-分片键的频率表示给定值在数据中出现的频率。如果大多数文档仅包含这些值的子集，则存储这些文档的块将成为集群中的瓶颈。此外，随着这些块的增长，它们可能会成为不可分割的块，因为它们不能进一步分裂。这将降低或删除集群内水平缩放的有效性。
+
+Shard Key Monotonicity分片键单调性
+A shard key on a value that increases or decreases monotonically is more likely to distribute inserts to a single shard within the cluster.
+单调增加或减少值上的分片键更有可能将插入分配到集群中的单个分片。
+This occurs because every cluster has a chunk that captures a range with an upper bound of maxKey. maxKey always compares as higher than all other values. Similarly, there is a chunk that captures a range with a lower bound of minKey. minKey always compares as lower than all other values.
+发生这种情况是因为每个群集都有一个块，该块捕获具有maxKey上限的范围。maxKey始终比较为高于所有其他值。类似地，也有一个块捕获具有minKey下限的范围。minKey始终比较为低于所有其他值。
+If the shard key value is always increasing, all new inserts are routed to the chunk with maxKey as the upper bound. If the shard key value is always decreasing, all new inserts are routed to the chunk with minKey as the lower bound. The shard containing that chunk becomes the bottleneck for write operations.
+如果分片键值始终在增加，则所有新插入都会路由到以maxKey为上限的块。如果分片键值始终在减少，则所有新插入都将路由到以minKey为下界的块。包含该块的分片成为写操作的瓶颈。
+
+Change a Document's Shard Key Value
+NOTE
+  When updating the shard key value
+    You must run on a mongos. Do not issue the operation directly on the shard.
+    You must run either in a transaction or as a retryable write.
+    You must include an equality condition on the full shard key in the query filter. For example, if a collection messages uses { activityid: 1, userid : 1 } as the shard key, to update the shard key for a document, you must include activityid: <value>, userid: <value> in the query filter. You can include additional fields in the query as appropriate.
+
+WARNING
+Starting in version 4.4, documents in sharded collections can be missing the shard key fields. Take precaution to avoid accidentally removing the shard key when changing a document's shard key value.
+从4.4版开始，分片集合中的文档可能会缺少分片关键字段。在更改文档的分片键值时，请注意避免意外删除分片键。
+
+Missing Shard Key缺少分片密钥
+Starting in version 4.4, documents in sharded collections can be missing the shard key fields.
+从4.4版开始，分片集合中的文档可能会缺少分片关键字段。
+
+Chunk Range and Missing Shard Key Fields分块范围和缺少的分片关键字段
+Missing shard keys fall within the same chunk range as shard keys with null values. For example, if the shard key is on the fields { x: 1, y: 1 }, then:
+缺少的分片键与具有空值的分片键在相同的块范围内。例如，如果分片键位于字段{ x: 1, y: 1 }上，则：
+
+Read/Write Operations and Missing Shard Key Fields读写操作和缺少分片关键字段
+
+Set the Missing Shard Key Fields设置缺少的分片关键字段
+To set missing shard key fields (which is different from changing the value of an existing shard key field), you can use the following operations on a mongos:
+要设置缺少的分片键字段（这与更改现有分片键字段的值不同），您可以在mongos上使用以下操作：
+
+
+
+
