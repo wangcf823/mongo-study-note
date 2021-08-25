@@ -1,0 +1,47 @@
+In sharded clusters, you can create zones of sharded data based on the shard key. You can associate each zone with one or more shards in the cluster. A shard can associate with any number of zones. In a balanced cluster, MongoDB migrates chunks covered by a zone only to those shards associated with the zone.
+TIP
+  Changed in version 4.0.3: By defining the zones and the zone ranges before sharding an empty or a non-existing collection, the shard collection operation creates chunks for the defined zone ranges as well as any additional chunks to cover the entire range of the shard key values and performs an initial chunk distribution based on the zone ranges. This initial creation and distribution of chunks allows for faster setup of zoned sharding. After the initial distribution, the balancer manages the chunk distribution going forward.See Pre-Define Zones and Zone Ranges for an Empty or Non-Existing Collection for an example.
+	
+This tutorial uses Zones to segment data based on geographic area.
+本教程使用区域根据地理区域对数据进行分段。
+
+The following are some example use cases for segmenting data by geographic area:
+以下是按地理区域分段数据的一些示例用例：
+	An application that requires segmenting user data based on geographic country需要根据地理国家/地区对用户数据进行分段的应用程序
+	A database that requires resource allocation based on geographic country需要基于地理国家分配资源的数据库
+
+Scenario
+A financial chat application logs messages, tracking the country of the originating user. The application stores the logs in the chat database under the messages collection. The chats contain information that must be segmented by country to have servers local to the country serve read and write requests for the country's users. A group of countries can be assigned same zone in order to share resources.
+金融聊天应用程序记录消息，跟踪源用户的国家/地区。应用程序将日志存储在消息集合下的聊天数据库中。聊天包含的信息必须按国家细分，以便使该国本地的服务器为该国用户提供读写请求。可以为一组国家分配相同的区域，以便共享资源。
+The application currently has users in the US, UK, and Germany. The country field represents the user's country based on its ISO 3166-1 Alpha-2 two-character country codes.
+该应用程序目前在美国、英国和德国拥有用户。国家/地区字段根据其ISO 3166-1 Alpha-2双字符国家/地区代码表示用户的国家/地区。
+The following documents represent a partial view of three chat messages:以下文档代表了三个聊天消息的部分视图：
+{
+  "_id" : ObjectId("56f08c447fe58b2e96f595fa"),
+  "country" : "US",
+  "userid" : 123,
+  "message" : "Hello there",
+  ...,
+}
+{
+  "_id" : ObjectId("56f08c447fe58b2e96f595fb"),
+  "country" : "UK",
+  "userid" : 456,
+  "message" : "Good Morning"
+  ...,
+}
+{
+  "_id" : ObjectId("56f08c447fe58b2e96f595fc"),
+  "country" : "DE",
+  "userid" : 789,
+  "message" : "Guten Tag"
+  ...,
+}
+
+Shard Key
+The messages collection uses the { country : 1, userid : 1 } compound index as the shard key.
+
+
+
+
+
