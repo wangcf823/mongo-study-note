@@ -1,0 +1,90 @@
+MongoDB uses the shard key associated to the collection to partition the data into chunks. A chunk consists of a subset of sharded data. Each chunk has a inclusive lower and exclusive upper range based on the shard key.
+MongoDB使用与集合关联的分片键将数据分区为块。块由分片数据的子集组成。每个块都有一个基于分片键的包含下范围和独占上范围。
+
+MongoDB splits chunks when they grow beyond the configured chunk size. Both inserts and updates can trigger a chunk split.
+MongoDB在块增长超过配置的块大小时将块拆分。插入和更新都可以触发块拆分。
+
+The smallest range a chunk can represent is a single unique shard key value. A chunk that only contains documents with a single shard key value cannot be split.
+块可以表示的最小范围是单个唯一的分片键值。仅包含具有单个分片键值的文档的块不能拆分。
+
+Initial Chunks
+Populated Collection填充集合
+The sharding operation creates the initial chunk(s) to cover the entire range of the shard key values. The number of chunks created depends on the configured chunk size.
+分片操作创建初始块（s）以覆盖分片键值的整个范围。创建的块数量取决于配置的块大小。
+After the initial chunk creation, the balancer migrates these initial chunks across the shards as appropriate as well as manages the chunk distribution going forward.
+在初始块创建后，平衡器会根据需要跨碎片迁移这些初始块，并管理未来的块分布。
+
+Empty Collection
+  If you define zones and zone ranges defined for an empty or non-existing collection (Available starting in MongoDB 4.0.3):
+  The sharding operation creates empty chunks for the defined zone ranges as well as any additional chunks to cover the entire range of the shard key values and performs an initial chunk distribution based on the zone ranges. This initial creation and distribution of chunks allows for faster setup of zoned sharding.
+  分片操作为定义的区域范围以及任何其他块创建空块，以覆盖分片键值的整个范围，并根据区域范围执行初始分片分发。这种块的初始创建和分发允许更快地设置分区分片。
+  After the initial distribution, the balancer manages the chunk distribution going forward.
+  在初始分发之后，平衡器管理向前的块分发。
+  
+If you do not have zones and zone ranges defined for an empty or non-existing collection:
+如果您没有为空集合或不存在集合定义区域和区域范围：
+  For hashed sharding:
+    The sharding operation creates empty chunks to cover the entire range of the shard key values and performs an initial chunk distribution. By default, the operation creates 2 chunks per shard and migrates across the cluster. You can use numInitialChunks option to specify a different number of initial chunks. This initial creation and distribution of chunks allows for faster setup of sharding.
+    分片操作创建空块以覆盖分片键值的整个范围，并执行初始分片分发。默认情况下，该操作每个分片创建2个区块，并在群集上迁移。您可以使用numInitialChunks选项指定不同数量的初始块。这种块的初始创建和分发允许更快地设置分片。
+    After the initial distribution, the balancer manages the chunk distribution going forward.
+    在初始分发之后，平衡器管理向前的块分发。
+  For ranged sharding:
+    The sharding operation creates a single empty chunk to cover the entire range of the shard key values.
+    分片操作创建一个空块，以覆盖分片键值的整个范围。
+    After the initial chunk creation, the balancer migrates the initial chunk across the shards as appropriate as well as manages the chunk distribution going forward.
+    在初始块创建后，平衡器会根据需要在分片中迁移初始块，并管理未来的块分布。
+    
+ TIP
+  See also: sh.balancerCollectionStatus()
+  
+ Chunk Size
+  The default chunk size in MongoDB is 64 megabytes. You can increase or reduce the chunk size. Consider the implications of changing the default chunk size:
+  MongoDB中的默认块大小为64 MB。您可以增加或减少块大小。考虑更改默认块大小的影响：
+    Small chunks lead to a more even distribution of data at the expense of more frequent migrations. This creates expense at the query routing (mongos) layer.
+    小数据块导致数据分布更均匀，而牺牲了更频繁的迁移。这将在查询路由（mongos）层创建费用。
+    Large chunks lead to fewer migrations. This is more efficient both from the networking perspective and in terms of internal overhead at the query routing layer. But, these efficiencies come at the expense of a potentially uneven distribution of data.
+    大数据块导致迁移减少。从网络的角度和查询路由层的内部开销来看，这都更有效。但是，这些效率是以牺牲数据分布可能不均匀为代价的。
+    Chunk size affects the Maximum Number of Documents Per Chunk to Migrate.
+    块大小会影响要迁移的每个块的最大文档数。
+    Chunk size affects the maximum collection size when sharding an existing collection. Post-sharding, chunk size does not constrain collection size.
+    分片现有集合时，块大小会影响最大集合大小。分片后，块大小不限制集合大小。
+    
+For many deployments, it makes sense to avoid frequent and potentially spurious migrations at the expense of a slightly less evenly distributed data set.
+对于许多部署，避免频繁和潜在的杂散迁移是有意义的，而牺牲了稍微不均匀分布的数据集。
+
+Limitations
+Changing the chunk size affects when chunks split but there are some limitations to its effects.
+更改块大小会影响块拆分时，但其效果有一些限制。
+  Automatic splitting only occurs during inserts or updates. If you lower the chunk size, it may take time for all chunks to split to the new size.
+  自动拆分仅在插入或更新期间发生。如果降低块大小，所有块可能需要时间才能拆分到新大小。
+  Splits cannot be "undone". If you increase the chunk size, existing chunks must grow through inserts or updates until they reach the new size.
+  拆分不能“撤消”。如果增加块大小，则现有块必须通过插入或更新增长，直到它们达到新大小。
+  
+Chunk Splits
+Splitting is a process that keeps chunks from growing too large. When a chunk grows beyond a specified chunk size, or if the number of documents in the chunk exceeds Maximum Number of Documents Per Chunk to Migrate, MongoDB splits the chunk based on the shard key values the chunk represent. A chunk may be split into multiple chunks where necessary. Inserts and updates may trigger splits. Splits are an efficient meta-data change. To create splits, MongoDB does not migrate any data or affect the shards.
+拆分是一个防止块增长过大的过程。当块增长超过指定的块大小，或者块中的文档数量超过每个块要迁移的最大文档数时，MongoDB将根据块表示的分片键值拆分块。必要时，一个块可以拆分为多个块。插入和更新可能会触发拆分。拆分是一种高效的元数据更改。要创建分裂，MongoDB不会迁移任何数据，也不会影响分片。
+Splits may lead to an uneven distribution of the chunks for a collection across the shards. In such cases, the balancer redistributes chunks across shards. See Cluster Balancer for more details on balancing chunks across shards.
+拆分可能会导致集合的块在碎片中分布不均匀。在这种情况下，平衡器会在碎片之间重新分配块。有关在分片之间平衡块的更多详细信息，请参见群集平衡器。
+
+Chunk Migration分块迁移
+  MongoDB migrates chunks in a sharded cluster to distribute the chunks of a sharded collection evenly among shards. Migrations may be either:
+  MongoDB迁移分片集群中的块，以将分片集合的块均匀分布在分片之间。迁移可以是：
+    Manual. Only use manual migration in limited cases, such as to distribute data during bulk inserts. See Migrating Chunks Manually for more details.
+    手动。仅在有限的情况下使用手动迁移，例如在批量插入期间分发数据。有关更多详细信息，请参见手动迁移块。
+    Automatic. The balancer process automatically migrates chunks when there is an uneven distribution of a sharded collection's chunks across the shards. See Migration Thresholds for more details.
+    自动。当分片集合的块在分片中分布不均匀时，平衡器进程会自动迁移块。有关更多详细信息，请参见迁移阈值。
+    
+  Balancing
+    The balancer is a background process that manages chunk migrations. If the difference in number of chunks between the largest and smallest shard exceed the migration thresholds, the balancer begins migrating chunks across the cluster to ensure an even distribution of data.
+    平衡器是管理块迁移的后台进程。如果最大分片和最小分片之间的块数量差异超过迁移阈值，平衡器将开始跨集群迁移块，以确保数据的均匀分布。
+    You can manage certain aspects of the balancer. The balancer also respects any zones created as a part of configuring zones in a sharded cluster.
+    您可以管理平衡器的某些方面。平衡器还尊重作为在分片群集中配置区域的一部分创建的任何区域。
+    
+ Indivisible/Jumbo Chunks
+  In some cases, chunks can grow beyond the specified chunk size but cannot undergo a split. The most common scenario is when a chunk represents a single shard key value. Since the chunk cannot split, it continues to grow beyond the chunk size, becoming a jumbo chunk. These jumbo chunks can become a performance bottleneck as they continue to grow, especially if the shard key value occurs with high frequency.
+  在某些情况下，块可以增长超过指定的块大小，但不能进行拆分。最常见的情况是，当一个块表示单个分片键值时。由于块不能分裂，它继续增长超过块大小，成为一个巨型块。这些巨型块可能会成为性能瓶颈，因为它们继续增长，特别是如果分片键值出现频率较高。
+  Starting in version 4.4, MongoDB provides the refineCollectionShardKey command. Refining a collection's shard key allows for a more fine-grained data distribution and can address situations where the existing key insufficient cardinality leads to jumbo chunks.
+  从4.4版本开始，MongoDB提供了细化收集ShardKey命令。细化集合的分片密钥允许更细粒度的数据分布，并可以解决现有密钥基数不足导致巨型块的情况。
+  
+ 
+
