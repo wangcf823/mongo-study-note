@@ -1,0 +1,42 @@
+Split Chunks in a Sharded Cluster
+Normally, MongoDB splits a chunk after an insert if the chunk exceeds the maximum chunk size. However, you may want to split chunks manually if:
+通常情况下，如果块超过最大块大小，MongoDB会在插入后拆分块。但是，在以下情况下，您可能希望手动拆分块：
+  you have a large amount of data in your cluster and very few chunks, as is the case after deploying a cluster using existing data.
+  您的群集中有大量数据，而区块很少，就像使用现有数据部署集群后的情况一样。
+  you expect to add a large amount of data that would initially reside in a single chunk or shard. For example, you plan to insert a large amount of data with shard key values between 300 and 400, but all values of your shard keys are between 250 and 500 are in a single chunk.
+  您希望添加大量最初驻留在单个块或分片中的数据。例如，您计划插入大量的数据，分片键值在300到400之间，但分片键值在250到500之间的所有值都在单个块中。
+  
+NOTE
+  MongoDB provides the mergeChunks command to combine contiguous chunk ranges into a single chunk. See Merge Chunks in a Sharded Cluster for more information.
+  MongoDB提供了合并块命令，将连续的块范围合并为单个块。有关详细信息，请参见合并分片群集中的块。
+
+The balancer may migrate recently split chunks to a new shard immediately if the move benefits future insertions. The balancer does not distinguish between chunks split manually and those split automatically by the system.
+如果移动有利于未来的插入，平衡器可能会立即将最近拆分的块迁移到新的分片中。平衡器不区分手动拆分的块和系统自动拆分的块。
+
+WARNING
+  Be careful when splitting data in a sharded collection to create new chunks. When you shard a collection that has existing data, MongoDB automatically creates chunks to evenly distribute the collection. To split data effectively in a sharded cluster you must consider the number of documents in a chunk and the average document size to create a uniform chunk size. When chunks have irregular sizes, shards may have an equal number of chunks but have very different data sizes. Avoid creating splits that lead to a collection with differently sized chunks.
+  在拆分分片集合中的数据以创建新的块时，请小心。当您对具有现有数据的集合进行分片时，MongoDB会自动创建块以均匀分布集合。要在分片群集中有效地拆分数据，您必须考虑块中的文档数量和平均文档大小，以创建统一的块大小。当块具有不规则大小时，分片可能具有相同数量的块，但具有非常不同的数据大小。避免创建导致具有不同大小块的集合的拆分。
+  
+Use sh.status() to determine the current chunk ranges across the cluster.
+使用sh.status()确定群集上的当前块范围。
+To split chunks manually, use the split command with either fields middle or find. The mongo shell provides the helper methods sh.splitFind() and sh.splitAt().
+要手动拆分块，请使用带有中间字段或查找字段的拆分命令。mongo shell提供了帮助程序方法sh.splitFind()和sh.splitAt()。
+
+splitFind() splits the chunk that contains the first document returned that matches this query into two equally sized chunks. You must specify the full namespace (i.e. "<database>.<collection>") of the sharded collection to splitFind(). The query in splitFind() does not need to use the shard key, though it nearly always makes sense to do so.
+拆分查找（）将包含返回的与此查询匹配的第一个文档的块拆分为两个大小相等的块。您必须指定要拆分查找（）的分片集合的完整命名空间（即“<database>.<收集>”）。拆分查找（）中的查询不需要使用分片键，尽管这样做几乎总是有意义的。
+
+EXAMPLE
+  The following command splits the chunk that contains the value of 63109 for the zipcode field in the people collection of the records database:
+  以下命令将拆分包含记录数据库人员集合中zipcode字段值63109的块：
+  sh.splitFind( "records.people", { "zipcode": "63109" } )
+  
+Use splitAt() to split a chunk in two, using the queried document as the lower bound in the new chunk:
+使用分裂At()将块一分为二，使用查询到的文档作为新块中的下界：
+
+EXAMPLE
+  The following command splits the chunk that contains the value of 63109 for the zipcode field in the people collection of the records database.
+  以下命令为记录数据库的人员集合中的zipcode字段拆分包含值63109的块。
+  sh.splitAt( "records.people", { "zipcode": "63109" } )
+  
+
+  
