@@ -1,0 +1,60 @@
+The MongoDB balancer is a background process that monitors the number of chunks on each shard. When the number of chunks on a given shard reaches specific migration thresholds, the balancer attempts to automatically migrate chunks between shards and reach an equal number of chunks per shard.
+MongoDB平衡器是一个后台进程，用于监控每个分片上的块数。当给定分片上的块数量达到特定的迁移阈值时，平衡器会尝试在分片之间自动迁移块，并达到每个分片的块数量相等。
+The balancing procedure for sharded clusters is entirely transparent to the user and application layer, though there may be some performance impact while the procedure takes place.
+分片群集的平衡过程对用户和应用程序层完全透明，尽管在该过程发生时可能会对性能产生一些影响。
+The balancer runs on the primary of the config server replica set (CSRS).
+
+Cluster Balancer
+The balancer process is responsible for redistributing the chunks of a sharded collection evenly among the shards for every sharded collection. By default, the balancer process is always enabled.
+平衡器进程负责将分片集合的块均匀地重新分配到每个分片集合的分片中。默认情况下，平衡器进程始终处于启用状态。
+To address uneven chunk distribution for a sharded collection, the balancer migrates chunks from shards with more chunks to shards with a fewer number of chunks. The balancer migrates the chunks until there is an even distribution of chunks for the collection across the shards. For details about chunk migration, see Chunk Migration Procedure.
+为了解决分片集合的分片分布不均的问题，平衡器将分片从分片数量较多的分片迁移到分片数量较少的分片。平衡器迁移块，直到集合的块在分片中均匀分布。有关块迁移的详细信息，请参见块迁移步骤。
+Chunk migrations can have an impact on disk space, as the source shard automatically archives the migrated documents by default. For details, see moveChunk directory.
+块迁移可能会对磁盘空间产生影响，因为默认情况下，源分片会自动存档迁移的文档。具体操作请参见移动Chunk目录。
+Chunk migrations carry some overhead in terms of bandwidth and workload, both of which can impact database performance. [1] The balancer attempts to minimize the impact by:
+块迁移在带宽和工作负载方面会带来一些开销，这两种开销都会影响数据库性能。[1]平衡器尝试通过以下方式将影响降至最低：
+  Restricting a shard to at most one migration at any given time; i.e. a shard cannot participate in multiple chunk migrations at the same time. To migrate multiple chunks from a shard, the balancer migrates the chunks one at a time.
+  在任何给定时间限制一个分片最多只能迁移一次；即一个分片不能同时参与多个分片迁移。要从分片中迁移多个块，平衡器一次迁移一个块。
+  Changed in version 3.4: Starting in MongoDB 3.4, MongoDB can perform parallel chunk migrations. Observing the restriction that a shard can participate in at most one migration at a time, for a sharded cluster with n shards, MongoDB can perform at most n/2 (rounded down) simultaneous chunk migrations.
+  3.4版中更改：从MongoDB 3.4开始，MongoDB可以执行并行块迁移。观察到一个分片一次最多可以参与一个迁移的限制，对于具有n个分片的分片集群，MongoDB最多可以执行n/2（向下四舍五入）同时块迁移。
+  Starting a balancing round only when the difference in the number of chunks between the shard with the greatest number of chunks for a sharded collection and the shard with the lowest number of chunks for that collection reaches the migration threshold.
+  只有当分片集合中块数最多的分片与该集合中块数最少的分片之间的块数差达到迁移阈值时，才启动平衡轮。
+  
+  You may disable the balancer temporarily for maintenance. See Disable the Balancer for details.
+  您可以暂时禁用平衡器以进行维护。有关详细信息，请参见禁用平衡器。
+  You can also limit the window during which the balancer runs to prevent it from impacting production traffic. See Schedule the Balancing Window for details.
+  您还可以限制平衡器运行的窗口，以防止其影响生产流量。有关详细信息，请参阅计划平衡窗口。
+  
+Adding and Removing Shards from the Cluster从集群中添加和删除分片
+Adding a shard to a cluster creates an imbalance, since the new shard has no chunks. While MongoDB begins migrating data to the new shard immediately, it can take some time before the cluster balances. See the Add Shards to a Cluster tutorial for instructions on adding a shard to a cluster.
+将分片添加到群集会导致不平衡，因为新分片没有分片。虽然MongoDB立即开始将数据迁移到新的分片，但集群平衡可能需要一些时间。有关将分片添加到群集的说明，请参阅将分片添加到群集教程。
+Removing a shard from a cluster creates a similar imbalance, since chunks residing on that shard must be redistributed throughout the cluster. While MongoDB begins draining a removed shard immediately, it can take some time before the cluster balances. Do not shutdown the servers associated to the removed shard during this process.
+从集群中删除分片会产生类似的不平衡，因为驻留在该分片上的块必须在整个集群中重新分配。虽然MongoDB立即开始耗尽删除的分片，但在群集平衡之前可能需要一些时间。在此过程中，请勿关闭与删除的分片关联的服务器。
+When you remove a shard in a cluster with an uneven chunk distribution, the balancer first removes the chunks from the draining shard and then balances the remaining uneven chunk distribution.
+当您删除块分布不均匀的集群中的分片时，平衡器首先从排水分片中删除分片，然后平衡剩余的不均匀分布。
+
+TIP
+  See also:
+  sh.balancerCollectionStatus()
+
+Chunk Migration Procedure分块迁移流程
+All chunk migrations use the following procedure:
+    1、The balancer process sends the moveChunk command to the source shard.
+    平衡器进程向源分片发送移动Chunk命令。
+    2、The source starts the move with an internal moveChunk command. During the migration process, operations to the chunk route to the source shard. The source shard is responsible for incoming write operations for the chunk.
+    源使用内部移动块命令启动移动。在迁移过程中，对块的操作将路由到源分片。源分片负责块的传入写入操作。
+    3、The destination shard builds any indexes required by the source that do not exist on the destination.
+    目标分片构建源所需的目标上不存在的任何索引。
+    4、The destination shard begins requesting documents in the chunk and starts receiving copies of the data. See also Chunk Migration and Replication.
+    目标分片开始请求块中的文档，并开始接收数据的副本。另请参见块迁移和复制。
+    5、After receiving the final document in the chunk, the destination shard starts a synchronization process to ensure that it has the changes to the migrated documents that occurred during the migration.
+    在接收到块中的最终文档后，目标分片启动同步过程，以确保它具有迁移期间对迁移文档发生的更改。
+    6、When fully synchronized, the source shard connects to the config database and updates the cluster metadata with the new location for the chunk.
+    完全同步时，源分片连接到配置数据库，并使用块的新位置更新群集元数据。
+    7、After the source shard completes the update of the metadata, and once there are no open cursors on the chunk, the source shard deletes its copy of the documents.
+    在源分片完成元数据的更新后，一旦块上没有打开的游标，源分片将删除其文档副本。
+
+Migration Thresholds迁移阈值
+To minimize the impact of balancing on the cluster, the balancer only begins balancing after the distribution of chunks for a sharded collection has reached certain thresholds. The thresholds apply to the difference in number of chunks between the shard with the most chunks for the collection and the shard with the fewest chunks for that collection. The balancer has the following thresholds:
+为了最大限度地减少平衡对群集的影响，平衡器只有在分片集合的块分布达到某些阈值后才开始平衡。阈值适用于集合中块数最多的分片和该集合中块数最少的分片之间的块数差异。平衡器具有以下阈值：
+
