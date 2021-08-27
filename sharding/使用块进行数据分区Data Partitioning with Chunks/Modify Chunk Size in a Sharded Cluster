@@ -1,0 +1,21 @@
+Modify Chunk Size in a Sharded Cluster
+The default chunk size for a sharded cluster is 64 megabytes. This default chunk size works well for most deployments; however, if you notice that automatic migrations have more I/O than your hardware can handle, you may want to reduce the chunk size. For automatic splits and migrations, a small chunk size leads to more rapid and frequent migrations. The allowed range of the chunk size is between 1 and 1024 megabytes, inclusive.
+分片群集的默认块大小为64 MB。此默认块大小适用于大多数部署；但是，如果您注意到自动迁移的I/O比硬件所能处理的I/O多，您可能需要减小块大小。对于自动拆分和迁移，较小的块大小会导致更快速和更频繁的迁移。块大小的允许范围在1到1024 MB之间，包括1到1024 MB。
+
+To modify the chunk size, use the following procedure:
+要修改块大小，请使用以下过程：
+  Connect to any mongos in the cluster using the mongo shell.
+  使用mongo shell连接到集群中的任何mongos。
+  Issue the following command to switch to the Config Database:
+  发出以下命令以切换到Config Database：
+  use config
+  Issue the following save() operation to store the global chunk size configuration value:
+  发出以下save()操作以存储全局块大小配置值：
+  db.settings.save( { _id:"chunksize", value: <sizeInMB> } )
+ 
+Modifying the chunk size has several limitations:
+Automatic splitting only occurs on insert or update.自动拆分仅在插入或更新时发生。
+If you lower the chunk size, it may take time for all chunks to split to the new size.如果降低块大小，所有块可能需要时间才能拆分到新大小。
+Splits cannot be undone.无法撤消拆分。
+If you increase the chunk size, existing chunks grow only through insertion or updates until they reach the new size.如果增加块大小，则现有块仅通过插入或更新来增长，直到它们达到新大小。
+The allowed range of the chunk size is between 1 and 1024 megabytes, inclusive.块大小的允许范围在1到1024 MB之间，包括1到1024 MB。
