@@ -1,0 +1,81 @@
+下一页列出了运行事务的一些生产注意事项。无论您在副本集还是分片群集上运行事务，这些都适用。有关在分片群集上运行事务的信息，另请参阅生产注意事项（分片群集），了解特定于分片群集的其他注意事项。
+
+可获得性
+在4.0版本中，MongoDB支持副本集上的多文档事务。
+在4.2版本中，MongoDB引入了分布式事务，它增加了对分片集群上多文档事务的支持，并合并了对副本集上多文档事务的现有支持。
+要在MongoDB 4.2部署（副本集和分片群集）上使用事务，客户端必须使用为MongoDB 4.2更新的MongoDB驱动程序。
+
+NOTE
+分布式事务和多文档事务
+从MongoDB 4.2开始，这两个术语是同义词。分布式事务是指分片集群和副本集上的多文档事务。多文档事务（无论是在分片群集上还是在副本集上）也被称为分布式事务，从MongoDB 4.2开始。
+
+特性兼容性
+要使用事务，部署所有成员的功能兼容性版本必须至少为：
+Deployment        Minimum featureCompatibilityVersion
+Replica Set         4.0
+Sharded Cluster     4.2
+
+要检查成员的fCV，请连接到成员并运行以下命令：
+db.adminCommand( { getParameter: 1, featureCompatibilityVersion: 1 } )
+For more information, see the setFeatureCompatibilityVersion reference page.
+
+
+Runtime Limit运行时限制
+默认情况下，事务的运行时间必须小于一分钟。您可以使用mongod实例的事务生命时间限制秒修改此限制。
+对于分片集群，所有分片副本集成员都必须修改该参数。超过此限制的事务将被视为已过期，并将被定期清理过程中止。
+
+For sharded clusters, you can also specify a maxTimeMS limit on commitTransaction. For more information, see Sharded Clusters Transactions Time Limit.
+
+Oplog Size Limit Oplog大小限制
+Starting in version 4.2,
+MongoDB根据需要创建尽可能多的oplog条目，以封装事务中的所有写操作，而不是为事务中的所有写操作创建一个条目。
+这将删除单个oplog条目对其所有写入操作施加的事务的16MB总大小限制。虽然总大小限制已删除，但每个oplog条目仍必须在BSON文档大小限制16MB以内。
+
+In version 4.0,
+如果事务包含任何写操作，MongoDB在提交时创建单个oplog（操作日志）条目。
+也就是说，事务中的单个操作没有相应的oplog条目。相反，单个oplog条目包含事务中的所有写入操作。事务的oplog条目必须在BSON文档大小限制16MB以内。
+
+WiredTiger缓存
+为防止存储缓存压力对性能产生负面影响，请执行以下操作：
+  放弃事务时，请中止事务。
+  当您在事务中的单个操作期间遇到错误时，请中止并重试事务。
+
+ transactionLifetimeLimitSeconds还确保过期的事务定期中止，以缓解存储缓存压力。
+ NOTE
+ 如果您的未提交事务超过WiredTiger缓存大小的5%，则该事务将中止并返回写入冲突错误。
+ 
+ Transactions and Security
+ 如果使用访问控制运行，则您必须具有事务中操作的权限。
+ 如果使用审计运行，则中止事务中的操作仍将被审计。但是，没有指示事务已中止的审计事件。
+ 
+ 分片配置限制
+ 您不能在具有writeConcernMjorityJournalDefault设置为false的分片群集上运行事务（例如具有使用内存存储引擎的投票成员的分片）。
+ 
+ 分片集群和仲裁器
+ 如果任何事务操作从包含仲裁器的分片读取或写入，则其写入操作跨越多个分片的事务将出错和中止。
+ 
+ 
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
