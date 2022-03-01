@@ -1,0 +1,111 @@
+对于事务：
+    您可以在上指定读/写（CUD）操作现存集合。
+    使用时功能兼容性版本(fcv) "4.4"或更高版本，您可以在事务中创建集合和索引。
+    事务中使用的集合可以位于不同的数据库中。
+    
+    注：
+      您不能在跨分片写入事务中创建新的集合。例如，如果您写入一个分片中的现有集合，并在另一个分片中隐式创建集合，则MongoDB无法在同一事务中执行这两个操作。
+      
+      
+     1、您无法写入封顶集合。 capped collections
+     封顶集合是支持基于插入顺序插入和检索文档的高吞吐量操作的固定大小集合。上限集合的工作方式类似于循环缓冲区：一旦集合填满其分配的空间，它就会通过覆盖集合中最旧的文档来为新文档腾出空间。
+     2、您无法读取/写入config，admin，或local数据库
+     3、You cannot write to system.* collections.
+     4、您无法返回支持的操作的查询计划(即。explain).
+     5、对于在事务外部创建的游标，您不能调用getMore在事务内部。
+     6、对于在事务中创建的游标，您不能调用getMore在事务之外。
+     7、从MongoDB 4.2开始，您不能指定killCursors作为第一个操作事务.
+     
+     在多文档事务中，不允许执行影响数据库目录的操作，如创建或删除集合或索引。例如，多文档事务不能包括会导致创建新集合的插入操作。
+     Operations that affect the database catalog, such as creating or dropping a collection or an index, are not allowed in multi-document transactions.
+     For example, a multi-document transaction cannot include an insert operation that would result in the creation of a new collection
+     
+     Operations Supported in Multi-Document Transactions
+     CRUD Operations
+     The following read/write operations are allowed in transactions:
+     Method
+     db.collection.aggregate()
+     db.collection.countDocuments()
+     db.collection.distinct()
+     db.collection.find()
+     db.collection.deleteMany()
+     db.collection.deleteOne()
+     db.collection.remove()
+     db.collection.findOneAndDelete()
+     db.collection.findOneAndReplace()
+     db.collection.findOneAndUpdate()
+     db.collection.insertMany()
+     db.collection.insertOne()
+     db.collection.insert()
+     db.collection.save()
+     db.collection.updateOne()
+     db.collection.updateMany()
+     db.collection.replaceOne()
+     db.collection.update()
+     db.collection.bulkWrite()
+     
+     
+     
+Count Operation
+要在事务中执行计数操作，请使用$count聚合阶段或$group(用一个$sum表达式)聚合阶段。
+兼容4.0特性的MongoDB驱动程序提供了集合级APIcountDocuments(filter, options)作为辅助方法，使用$group用一个$sum表达式执行计数。4.0驱动程序已不建议使用count()API.
+从MongoDB 4.0.3开始，mongoshell提供了db.collection.countDocuments()helper方法，使用$group用一个$sum执行计数的表达式。
+
+Distinct Operation去重操作
+要在事务中执行不同的操作，请执行以下操作：
+  对于未分片的集合，您可以使用db.collection.distinct()方法/distinct命令以及聚合管道$group舞台。
+  对于分片集合，您不能使用db.collection.distinct()方法或distinct命令。要查找分片集合的不同值，请将聚合管道与$group转而舞台。例如：
+  替代db.coll.distinct("x")的，使用：
+  db.coll.aggregate([
+   { $group: { _id: null，distinctValues: { $addToSet: "$x" } } },
+   { $project: { _id: 0 } }
+])
+
+  替代db.coll.distinct("x", { status: "A" })的，使用：
+  db.coll.aggregate([
+   { $match: { status: "A" } },
+   { $group: { _id: null，distinctValues: { $addToSet: "$x" } } },
+   { $project: { _id: 0 } }
+])
+
+管道将光标返回到文档：
+{ "distinctValues" : [ 2，3，1 ] }
+迭代光标以访问结果文档。
+
+DDL操作
+显式DDL操作
+命令
+create
+createIndexes
+
+注：
+对于在事务中显式创建集合或索引，事务读取关注级别必须为"local".
+
+隐式DDL操作
+您还可以通过以下针对不存在的集合：
+db.collection.findAndModify() with upsert: true
+db.collection.findOneAndReplace() with upsert: true
+db.collection.findOneAndUpdate() with upsert: true
+
+db.collection.insertMany()
+db.collection.insertOne()
+db.collection.insert()
+
+db.collection.save() results in an insert
+
+db.collection.updateOne() with upsert: true
+db.collection.updateMany() with upsert: true
+db.collection.replaceOne() with upsert: true
+db.collection.update() with upsert: true
+
+db.collection.bulkWrite() with insert or upsert:true operations
+Various Bulk Operation Methods with insert or upsert:true operations
+
+
+
+
+
+
+     
+     
+     
