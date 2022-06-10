@@ -1,0 +1,8 @@
+var tables = db.getCollectionNames();
+tables.forEach(function(item){
+stats = db.runCommand({collStats:item});
+var sizeGB = stats.storageSize/1024/1024/1024;
+if (sizeGB > 1) {
+print(item,sizeGB);
+}
+});
