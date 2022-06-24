@@ -1,0 +1,24 @@
+创建索引
+db.myColl.createIndex(
+   { score: 1, price: 1, category: 1 },
+   { collation: { locale: "fr" } } )
+db.collection.createIndex({"a": 1},{background:true})
+
+查看索引创建进度
+db.currentOp(
+{$or:[{op:"command","query.createIndexes":{$exists:true}},{op:"insert",ns:/\.system\.indexes\b/}]}
+)
+
+
+查看索引
+db.collection.getIndexes()
+
+查看集群是否分片
+sh.status()
+
+查看集合是否分片
+use databaseName;
+db.collectionName.stats().sharded #简单的返回true或者false
+
+批量杀进程
+db.currentOp({"secs_running":{$lte:10},"msg":/Index*/}).inprog.forEach(function(item){db.killOp(item.opid)})
