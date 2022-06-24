@@ -1,0 +1,187 @@
+MongoDB查看执行计划 
+mob604756f06ed82021-09-02 09:18:00
+文章标签执行计划mongodbsedgit返回结果文章分类IT职场其它阅读数258
+
+简介
+
+MongoDB的 explain() 函数可以帮助我们查看查询相关的信息，这有助于快速定位查询瓶颈。
+
+ 
+
+基本用法
+
+基本命令
+
+db.dev.find({name:/^zhang/, age:{$gt:15}}).explain()
+1.
+直接跟在 find() 函数后面，表示查看 find() 函数的执行计划，结果如下：
+
+MongoDB查看执行计划_返回结果MongoDB查看执行计划_返回结果_02
+{
+    "queryPlanner" : {
+        "plannerVersion" : 1,
+        "namespace" : "xwj_db.dev",
+        "indexFilterSet" : false,
+        "parsedQuery" : {
+            "$and" : [
+                {
+                    "age" : {
+                        "$gt" : 15.0
+                    }
+                },
+                {
+                    "name" : {
+                        "$regex" : "^zhang"
+                    }
+                }
+            ]
+        },
+        "queryHash" : "ADEBB940",
+        "planCacheKey" : "5F8D7E6C",
+        "winningPlan" : {
+            "stage" : "FETCH",
+            "filter" : {
+                "age" : {
+                    "$gt" : 15.0
+                }
+            },
+            "inputStage" : {
+                "stage" : "IXSCAN",
+                "keyPattern" : {
+                    "name" : 1.0
+                },
+                "indexName" : "idx_name",
+                "isMultiKey" : false,
+                "multiKeyPaths" : {
+                    "name" : []
+                },
+                "isUnique" : false,
+                "isSparse" : false,
+                "isPartial" : false,
+                "indexVersion" : 2,
+                "direction" : "forward",
+                "indexBounds" : {
+                    "name" : [
+                        "[\"zhang\", \"zhanh\")",
+                        "[/^zhang/, /^zhang/]"
+                    ]
+                }
+            }
+        },
+        "rejectedPlans" : []
+    },
+    "serverInfo" : {
+        "host" : "mongo",
+        "port" : 27017,
+        "version" : "4.2.11",
+        "gitVersion" : "ea38428f0c6742c7c2c7f677e73d79e17a2aab96"
+    },
+    "ok" : 1.0
+}
+
+
+View Code
+返回结果包含两大块信息：一个是 queryPlanner，即查询计划，还有一个是serverInfo，即MongoDB服务的一些信息。
+
+查询计划 queryPlanner 中，参数比较多，挑几个比较重要的参数说明下：
+
+参数	含义
+plannerVersion	查询计划版本
+namespace	要查询的集合
+indexFilterSet	是否应用了index filter
+parsedQuery	查询条件
+winningPlan	最佳执行计划
+winningPlan.stage	
+查询方式，常见的有: COLLSCAN/全表扫描、IXSCAN/索引扫描、FETCH/根据索引去检索文档、
+
+SHARD_MERGE/合并分片结果、IDHACK/针对_id进行查询、SORT/在内存中进行排序
+
+winningPlan.filter	过滤条件
+winningPlan.inputStage.keyPattern	索引规则。这里是name正序
+winningPlan.inputStage.indexName	索引名称
+winningPlan.inputStage.isMultiKey	本次查询是否使用了多键、复合索引
+winningPlan.inputStage.direction	查询顺序：正序是forward，倒序是backward
+winningPlan.inputStage.direction	所扫描的索引范围
+ 
+
+参数
+
+explain() 函数也可以接收不同参数，通过设置不同参数可以查看更详细的查询计划。
+
+参数包括：queryPlanner(缺省)、executionStats、allPlansExecution
+
+执行explain("executionStats")，会发现执行计划中多了一些统计信息(其它信息跟上面一样，这里省略)，如下：
+
+MongoDB查看执行计划_返回结果MongoDB查看执行计划_返回结果_02
+"executionStats" : {
+    "executionSuccess" : true,
+    "nReturned" : 1,
+    "executionTimeMillis" : 0,
+    "totalKeysExamined" : 3,
+    "totalDocsExamined" : 3,
+    "executionStages" : {
+        "stage" : "FETCH",
+        "filter" : {
+            "age" : {
+                "$gt" : 15.0
+            }
+        },
+        "nReturned" : 1,
+        "executionTimeMillisEstimate" : 0,
+        "works" : 4,
+        "advanced" : 1,
+        "needTime" : 2,
+        "needYield" : 0,
+        "saveState" : 0,
+        "restoreState" : 0,
+        "isEOF" : 1,
+        "docsExamined" : 3,
+        "alreadyHasObj" : 0,
+        "inputStage" : {
+            "stage" : "IXSCAN",
+            "nReturned" : 3,
+            "executionTimeMillisEstimate" : 0,
+            "works" : 4,
+            "advanced" : 3,
+            "needTime" : 0,
+            "needYield" : 0,
+            "saveState" : 0,
+            "restoreState" : 0,
+            "isEOF" : 1,
+            "keyPattern" : {
+                "name" : 1.0
+            },
+            "indexName" : "idx_name",
+            "isMultiKey" : false,
+            "multiKeyPaths" : {
+                "name" : []
+            },
+            "isUnique" : false,
+            "isSparse" : false,
+            "isPartial" : false,
+            "indexVersion" : 2,
+            "direction" : "forward",
+            "indexBounds" : {
+                "name" : [
+                    "[\"zhang\", \"zhanh\")",
+                    "[/^zhang/, /^zhang/]"
+                ]
+            },
+            "keysExamined" : 3,
+            "seeks" : 1,
+            "dupsTested" : 0,
+            "dupsDropped" : 0
+        }
+    }
+}
+
+View Code
+executionStats参数含义：
+
+参数	含义
+totalKeysExamined	索引扫描次数
+totalDocsExamined	文档扫描次数
+nReturned	返回的结果数
+executionTimeMillis	执行耗时
+executionSuccess	是否执行成功
+ 
