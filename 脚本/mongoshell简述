@@ -1,0 +1,39 @@
+The mongo shell is an interactive JavaScript interface to MongoDB
+mongo shell是MongoDB的交互式JavaScript接口
+
+定义函数myFunction：
+function myFunction () { }
+
+使用编辑器编辑函数：
+edit myFunction
+
+Opening New Connections
+new Mongo()
+new Mongo(<host>)
+new Mongo(<host:port>)
+
+该示例实例化localhost上默认端口运行的MongoDB实例的新连接，并设置全局db变量到myDatabase使用getDB()方法：
+conn = new Mongo();
+db = conn.getDB("myDatabase");
+
+下面这样也可以
+db = connect("localhost:27020/myDatabase");
+
+mongo shell中的数据类型
+type   Date  
+Date()返回日期字符串
+new Date() 构造器 返回date()对象用ISODATE（）封装
+ISODate()同上
+
+type  ObjectId
+mongo shell围绕ObjectId数据类型提供ObjectId()包装类。要生成新的ObjectId，请在mongo shell中使用以下操作：
+new ObjectId
+
+type  NumberLong
+默认情况下，mongo shell将所有数字视为浮点值。mongo shell提供NumberLong()包装器来处理64位整数。
+NumberLong()包装器接受long作为字符串：
+NumberLong("2090845886852")
+
+
+
+
