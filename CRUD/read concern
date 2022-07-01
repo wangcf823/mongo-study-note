@@ -1,0 +1,37 @@
+https://www.mongodb.com/docs/v4.4/reference/read-concern-local/
+"local"
+读取从实例返回的数据，但这个实例不保证数据已经写入大多数副本集成员（例如：也许会回滚）
+
+Read concern "local" is the default for:
+1、读取操作针对主节点；
+2、read operations against secondaries if the reads are associated with causally consistent sessions.假如读取关联了因果一致性会话，则读取操作针对第二节点。
+
+"available"
+Read concern "available" 是针对辅助读取的默认值，如果读取未与因果一致会话.
+对于分片集群，"available"读关注为分区提供了更大的容忍度，因为它不等待确保一致性保证。也就是说，阅读关注"available"不联系分片的主服务器或配置服务器以进行更新元数据。但是，这意味着查询"available"阅读关注可能会返回孤立文档如果分片正在进行块迁移。
+
+对于未分片的集合（包括独立部署或副本集部署中的集合），"local"和"available"读取关注点的行为相同。
+
+Read Concern "majority"
+对于读取操作没有关联多文档事务，read concern "majority"保证读取的数据已被大多数副本集成员确认（即，读取的文档是持久的，并保证不会回滚）。
+对于多文档事务操作， 只有在事务提交时 write concern "majority" ，read concern "majority"才会提供保证。否则， the "majority" read concern对事务中读取的数据不能提供保证。
+
+Read concern "majority" 可用于或不用于因果关系一致的会话和事务。
+
+Read Concern "linearizable"
+查询返回反映在读取操作开始之前完成的所有成功确认的写入的数据。查询可能会等待并发执行写入以传播到大多数副本集成员，然后返回结果。
+如果大多数副本集成员在读取操作后崩溃并重新启动，则读取操作返回的文档将是持久的，如果writeConcernMajorityJournalDefault设置为默认状态true.
+
+With writeConcernMajorityJournalDefault set to falseMongoDB does not wait for w: "majority" writes to be written to the on-disk journal before acknowledging the writes.
+As such, "majority" write operations could possibly roll back in the event of a transient loss (e.g. crash and restart) of a majority of nodes in a given replica set.
+
+You can specify linearizable read concern for read operations on the primary only.
+仅当读操作指定唯一标识单个文档的查询筛选器时，可线性读关注保证才适用。
+
+
+
+
+
+
+
+
