@@ -1,0 +1,38 @@
+将命令行选项转换为YAML
+Starting in MongoDB 4.2, mongod and mongos accept --outputConfig command-line option to output the configuration used by the mongod/mongos instance.
+Examples
+Convert mongod Command-Line Options to YAML
+Consider the following mongod invocation that uses the command-line options:
+mongod --shardsvr --replSet myShard  --dbpath /var/lib/mongodb --bind_ip localhost,My-Example-Hostname --fork --logpath /var/log/mongodb/mongod.log --clusterAuthMode x509 --tlsMode requireTLS  --tlsCAFile /path/to/my/CA/file  --tlsCertificateKeyFile /path/to/my/certificate/file --tlsClusterFile /path/to/my/cluster/membership/file
+
+Include the --outputConfig command-line option to generate the corresponding YAML file.
+mongod --shardsvr --replSet myShard  --dbpath /var/lib/mongodb --bind_ip localhost,My-Example-Hostname --fork --logpath /var/log/mongodb/mongod.log --clusterAuthMode x509 --tlsMode requireTLS  --tlsCAFile /path/to/my/CA/file  --tlsCertificateKeyFile /path/to/my/certificate/file --tlsClusterFile /path/to/my/cluster/membership/file --outputConfig
+
+The mongod outputs the following YAML to stdout and exits:
+net:
+  bindIp: localhost,My-Example-Hostname
+  tls:
+    CAFile: /path/to/my/CA/file
+    certificateKeyFile: /path/to/my/certificate/file
+    clusterFile: /path/to/my/cluster/membership/file
+    mode: requireTLS
+outputConfig: true
+processManagement:
+  fork: true
+replication:
+  replSet: myShard
+security:
+  clusterAuthMode: x509
+sharding:
+  clusterRole: shardsvr
+storage:
+  dbPath: /var/lib/mongodb
+systemLog:
+  destination: file
+  path: /var/log/mongodb/mongod.log
+
+
+
+
+
+
