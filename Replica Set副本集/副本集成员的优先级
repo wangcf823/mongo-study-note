@@ -1,0 +1,13 @@
+调整优先级操作步骤
+1、将副本集配置复制到变量。
+cfg = rs.conf()
+
+2、更改每个成员的优先级值。
+cfg.members[0].priority = 0.5
+cfg.members[1].priority = 2
+cfg.members[2].priority = 2
+
+3、为副本集分配新配置。
+rs.reconfig(cfg)
+
+
