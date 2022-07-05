@@ -55,6 +55,116 @@ The updated document would resemble:
   metrics: { orders: 3, ratings: 3.5 }
 }
 
+$min
+更新指定字段的值，假如给出指定字段的值小于当前值。
+
+
+$max
+更新指定字段的值，假如给出指定字段的值大于于当前值。
+Examples
+{ _id: 1, highScore: 800, lowScore: 200 }
+
+db.scores.update( { _id: 1 }, { $max: { highScore: 950 } } )
+
+{ _id: 1, highScore: 950, lowScore: 200 }
+
+db.scores.update( { _id: 1 }, { $max: { highScore: 870 } } )
+
+{ _id: 1, highScore: 950, lowScore: 200 }
+
+$mul
+将字段的值乘以数字。要指定$mul表达式，使用以下原型：
+{ $mul: { <field1>: <number1>, ... } }
+Examples
+{ "_id" : 1, "item" : "ABC", "price" : NumberDecimal("10.99"), "qty" : 25 }
+
+db.products.update(
+   { _id: 1 },
+   { $mul: { price: NumberDecimal("1.25"), qty: 2 } }
+)
+
+{ "_id" : 1, "item" : "ABC", "price" : NumberDecimal("13.7375"), "qty" : 50 }
+
+$rename
+此操作符更新字段的名字，格式如下：
+{$rename: { <field1>: <newName1>, <field2>: <newName2>, ... } }
+If the field to rename does not exist in a document, $rename does nothing (i.e. no operation).
+Examples
+{
+  "_id": 1,
+  "alias": [ "The American Cincinnatus", "The American Fabius" ],
+  "mobile": "555-555-5555",
+  "nmae": { "first" : "george", "last" : "washington" }
+}
+{
+  "_id": 2,
+  "alias": [ "My dearest friend" ],
+  "mobile": "222-222-2222",
+  "nmae": { "first" : "abigail", "last" : "adams" }
+}
+{
+  "_id": 3,
+  "alias": [ "Amazing grace" ],
+  "mobile": "111-111-1111",
+  "nmae": { "first" : "grace", "last" : "hopper" }
+}
+
+db.students.updateMany( {}, { $rename: { "nmae": "name" } } )
+{
+  "_id": 1,
+  "alias": [ "The American Cincinnatus", "The American Fabius" ],
+  "mobile": "555-555-5555",
+  "name": { "first" : "george", "last" : "washington" }
+}
+{
+   "_id" : 2,
+   "alias" : [ "My dearest friend" ],
+   "mobile" : "222-222-2222",
+   "name" : { "first" : "abigail", "last" : "adams" }
+}
+{ "_id" : 3,
+  "alias" : [ "Amazing grace" ],
+  "mobile" : "111-111-1111",
+  "name" : { "first" : "grace", "last" : "hopper" } }
+  
+  $set
+  此操作符会用给定的值去替换字段的值。
+  If the field does not exist, $set will add a new field with the specified value, provided that the new field does not violate a type constraint.
+  格式如下：
+  { $set: { <field1>: <value1>, ... } }
+  Examples
+  
+  $setOnInsert
+  If an update operation with upsert: true results in an insert of a document, then $setOnInsert assigns the specified values to the fields in the document.
+  If the update operation does not result in an insert, $setOnInsert does nothing.
+  
+  db.collection.update(
+   <query>,
+   { $setOnInsert: { <field1>: <value1>, ... } },
+   { upsert: true }
+)
+Example
+db.products.update(
+  { _id: 1 },
+  {
+     $set: { item: "apple" },
+     $setOnInsert: { defaultQty: 100 }
+  },
+  { upsert: true }
+)
+{ "_id" : 1, "item" : "apple", "defaultQty" : 100 }
+
+
+$unset
+The $unset operator deletes a particular field.
+Example
+The following update() operation uses the $unset operator to remove the fields quantity and instock from the first document in the products collection where the field sku has a value of unknown.
+
+db.products.update(
+   { sku: "unknown" },
+   { $unset: { quantity: "", instock: "" } }
+)
+
 
 
 
