@@ -9,7 +9,7 @@ Member 2
 mongodb2.example.net
 
 以下示例通过指定副本集名称和ipbind--replSet和--bind_ip命令行选项：
-mongod --replSet "rs0" --bind_ip localhost,<hostname(s)|ip address(es)>
+mongod --replSet "rs0" --bind_ip localhost,<hostname(s)|ip address(es)>    bind_ip:限制ip，表示哪些用户ip,可以登录此服务器
 或者，您也可以指定replica set name和ip addresses在一个配置文件：
 replication:
    replSetName: "rs0"
