@@ -1,0 +1,133 @@
+1、使用适当的选项启动副本集的每个成员。
+Replica Set Member
+Hostname
+Member 0
+mongodb0.example.net
+Member 1
+mongodb1.example.net
+Member 2
+mongodb2.example.net
+
+以下示例通过指定副本集名称和ipbind--replSet和--bind_ip命令行选项：
+mongod --replSet "rs0" --bind_ip localhost,<hostname(s)|ip address(es)>
+或者，您也可以指定replica set name和ip addresses在一个配置文件：
+replication:
+   replSetName: "rs0"
+net:
+   bindIp: localhost,<hostname(s)|ip address(es)>
+   
+要开始mongod对于配置文件，使用--config选项：
+mongod --config <path-to-config>
+
+在生产部署中，您可以配置初始化脚本来管理此过程。Init脚本不在本文档的范围内。
+
+2、Connect a mongo shell to one of the mongod instances.连接一个mongo shell 到其中一个mongod实例。
+mongo
+
+3、Initiate the replica set.初始化副本集。
+从mongoshell，运行rs.initiate()在副本集成员0
+重要提示：运行rs.initiate()只能在一个且只能有一个 mongod副本集实例上。
+
+rs.initiate( {
+   _id : "rs0",
+   members: [
+      { _id: 0, host: "mongodb0.example.net:27017" },
+      { _id: 1, host: "mongodb1.example.net:27017" },
+      { _id: 2, host: "mongodb2.example.net:27017" }
+   ]
+})
+
+4、查看副本集配置。
+使用rs.conf()来显示副本集配置对象。
+rs.conf()
+
+The replica set configuration object resembles the following:
+{
+   "_id" : "rs0",
+   "version" : 1,
+   "protocolVersion" : NumberLong(1),
+   "members" : [
+      {
+         "_id" : 0,
+         "host" : "mongodb0.example.net:27017",
+         "arbiterOnly" : false,
+         "buildIndexes" : true,
+         "hidden" : false,
+         "priority" : 1,
+         "tags" : {
+
+         },
+         "slaveDelay" : NumberLong(0),
+         "votes" : 1
+      },
+      {
+         "_id" : 1,
+         "host" : "mongodb1.example.net:27017",
+         "arbiterOnly" : false,
+         "buildIndexes" : true,
+         "hidden" : false,
+         "priority" : 1,
+         "tags" : {
+
+         },
+         "slaveDelay" : NumberLong(0),
+         "votes" : 1
+      },
+      {
+         "_id" : 2,
+         "host" : "mongodb2.example.net:27017",
+         "arbiterOnly" : false,
+         "buildIndexes" : true,
+         "hidden" : false,
+         "priority" : 1,
+         "tags" : {
+
+         },
+         "slaveDelay" : NumberLong(0),
+         "votes" : 1
+      }
+      
+   ],
+   "settings" : {
+      "chainingAllowed" : true,
+      "heartbeatIntervalMillis" : 2000,
+      "heartbeatTimeoutSecs" : 10,
+      "electionTimeoutMillis" : 10000,
+      "catchUpTimeoutMillis" : -1,
+      "getLastErrorModes" : {
+
+      },
+      "getLastErrorDefaults" : {
+         "w" : 1,
+         "wtimeout" : 0
+      },
+      "replicaSetId" : ObjectId("585ab9df685f726db2c6a840")
+   }
+}
+
+
+5、Ensure that the replica set has a primary.
+Use rs.status() to identify the primary in the replica set.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   
+   
+   
+   
+   
+   
+   
