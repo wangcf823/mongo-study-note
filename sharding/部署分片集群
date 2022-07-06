@@ -1,0 +1,116 @@
+操作步骤
+创建配置服务器副本集
+以下步骤部署配置服务器副本集。
+对于生产部署，请部署至少具有三个成员的配置服务器副本集。出于测试目的，您可以创建单个成员副本集。
+配置服务器副本集不得与任何分片副本集使用相同的名称。
+
+对于本教程，配置服务器副本集成员与以下主机关联：
+配置服务器副本集成员    主机名
+Member 0         cfg1.example.net
+Member 1         cfg2.example.net
+Member 2         cfg3.example.net
+
+1、启动配置服务器副本集的每个成员。
+当启动每个mongod时，指定mongod 设置两种方式任选其一，一个时配置文件，一个是命令行。
+配置文件
+sharding:
+  clusterRole: configsvr
+replication:
+  replSetName: <replica set name>
+net:
+  bindIp: localhost,<hostname(s)|ip address(es)>
+sharding.clusterRole到configsvr，
+replication.replSetName配置服务器副本集的所需名称，
+net.bindIp主机名/IP地址或逗号分隔的主机名或IP地址列表的选项，远程客户端（包括配置服务器副本集的其他成员以及分片群集的其他成员）可以用于连接到实例。
+
+2、连接到其中一个配置服务器。
+mongo --host <hostname> --port <port>
+
+3、初始化副本集
+从mongo shell 里，运行rs.initiate()方法。
+
+
+Create the Shard Replica Sets
+1、启动分片副本集的每个成员。
+sharding:
+    clusterRole: shardsvr
+replication:
+    replSetName: <replSetName>
+net:
+    bindIp: localhost,<ip address>
+Start the mongod with the --config option set to the configuration file path.
+mongod --config <path-to-config-file>
+
+2、连接到分片副本集的一个成员。
+Connect a mongo shell to one of the replica set members.
+mongo --host <hostname> --port <port>
+
+3、Initiate the replica set.
+rs.initiate(
+  {
+    _id : "myReplSet",
+    members: [
+      { _id : 0, host : "s1-mongo1.example.net:27018" },
+      { _id : 1, host : "s1-mongo2.example.net:27018" },
+      { _id : 2, host : "s1-mongo3.example.net:27018" }
+    ]
+  }
+)
+
+启动分片集群中得mongos
+如果使用配置文件，请设置sharding.configDB配置服务器副本集名称和副本集的至少一个成员<replSetName>/<host:port>格式。
+sharding:
+  configDB: <configReplSetName>/cfg1.example.net:27019,cfg2.example.net:27019
+net:
+  bindIp: localhost,<hostname(s)|ip address(es)>
+  
+  启动mongos指定--config选项和配置文件的路径。
+  mongos --config <path-to-config>
+  
+  连接到分片集群，连接得是mongos
+  mongo --host <hostname> --port <port>
+  
+  将分片添加到集群中
+  sh.addShard( "<replSetName>/s1-mongo1.example.net:27018,s1-mongo2.example.net:27018,s1-mongo3.example.net:27018")
+重复这些步骤，直到集群包含所有所需的分片。
+
+启用数据库分片
+在可以对集合进行分片之前，必须为集合的数据库启用分片。为数据库启用分片不会重新分配数据，但可以对该数据库中的集合进行分片。
+sh.enableSharding("<database>")
+分片集合
+MongoDB提供了两种分片集合的策略：
+散列分片使用散列索引的单个字段作为分片键在分片集群中分区数据。
+sh.shardCollection("<database>.<collection>", { <shard key field> : "hashed" } )
+基于范围的分片可以使用多个字段作为分片键，并将数据划分为由分片键值确定的连续范围。
+sh.shardCollection("<database>.<collection>", { <shard key field> : 1, ... } )
+
+从4.0版开始，mongoshell提供了方法convertShardKeyToHashed()。此方法使用与散列索引相同的散列函数，并可用于查看键的散列值。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+ 
+
+
+
+
