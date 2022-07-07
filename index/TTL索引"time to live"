@@ -1,0 +1,37 @@
+数据过期对于某些类别的信息非常有用，包括机器生成的事件数据、日志和只需要在有限的时间内保留的会话信息。
+一个特别的TTL索引属性支持TTL集合的实现。TTL功能依赖于mongod的后台线程，此线程读取索引中日期类型的值然后从集合中
+移除过期的文档。
+
+教程
+创建一个TTL索引，使用db.collection.createIndex()方法，搭配expireAfterSeconds选项在字段上，此字段的值要么是date
+类型，要么是一个含有date值得数组。
+示例：
+db.log_events.createIndex( { "createdAt": 1 }, { expireAfterSeconds: 3600 } )
+
+db.log_events.insert( {
+   "createdAt": new Date(),
+   "logEvent": 2,
+   "logMessage": "Success!"
+} )
+
+对于新插入得文档，将在3600秒后到期
+
+在特定时钟时间过期
+db.log_events.createIndex( { "expireAt": 1 }, { expireAfterSeconds: 0 } )
+
+db.log_events.insert( {
+   "expireAt": new Date('July 22, 2013 14:00:00'),
+   "logEvent": 2,
+   "logMessage": "Success!"
+} )
+
+如果expireAfterSeconds的值设置为0，则该文档会在文档指定日期处过期，被删除，上例会在：July 22, 2013 14:00:00.过期。
+
+
+
+
+
+
+
+
+
