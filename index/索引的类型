@@ -1,0 +1,99 @@
+单字段索引
+{
+  "_id": ObjectId("570c04a4ad233577f97dc459"),
+  "score": 1034,
+  "location": { state: "NY", city: "New York" }
+}
+db.records.createIndex( { score: 1 } )
+嵌入式单索引键用点表示。
+
+复合索引
+db.collection.createIndex( { <field1>: <type>, <field2>: <type2>, ... } )
+索引字段的顺序对给定查询的特定索引的有效性有很大的影响。
+ ESR (Equality, Sort, Range) rule规则可以帮助创建索引。
+ 示例：
+ {
+ "_id": ObjectId(...),
+ "item": "Banana",
+ "category": ["food", "produce", "grocery"],
+ "location": "4th Street Store",
+ "stock": 4,
+ "type": "cases"
+}
+db.products.createIndex( { "item": 1, "stock": 1 } )
+排序顺序
+构建索引的时候1表示正序，-1表示反序。
+对于单字段索引，键的排序顺序并不重要，因为MongoDB可以在任何一个方向上遍历索引。但是，对于复合索引，排序顺序在确定索引是否支持排序操作时可能很重要。
+db.events.find().sort( { username: 1, date: -1 } )
+db.events.createIndex( { "username" : 1, "date" : -1 } )
+索引前缀
+意思就是构建符合索引，其前缀子集字段查询也是可以支持索引的。例如：
+{ "item": 1, "location": 1, "stock": 1 }
+MongoDB可以使用索引对以下字段进行查询：
+ item field,
+ item field and the location field,
+ item field and the location field and the stock field.
+ 查询 item和stock也可以用到索引，但只使用到item字段。如果查询省略了特定的索引前缀，则无法使用该前缀之后的任何索引字段。
+ 下面这些都用不到索引：
+the location field,
+the stock field, or
+the location and stock fields.
+
+文本索引
+要创建一个text索引，使用db.collection.createIndex()方法。要索引包含字符串或字符串元素数组的字段，请包括该字段并指定字符串文字"text"在索引文档中，如以下示例所示：
+db.reviews.createIndex( { comments: "text" } )
+一个集合最多可以有一 text索引
+您可以为text索引。以下示例创建text字段索引subject和comments：
+db.reviews.createIndex(
+   {
+     subject: "text",
+     comments: "text"
+   }
+ )
+ 
+ 
+ 通配符索引（4.2版本以上才支持）
+ { "userMetadata" : { "likes" : [ "dogs", "cats" ] } }
+{ "userMetadata" : { "dislikes" : "pickles" } }
+{ "userMetadata" : { "age" : 45 } }
+{ "userMetadata" : "inactive" }
+一个通配符索引，可以支持上面所有的单字段索引：
+db.userData.createIndex( { "userMetadata.$**" : 1 } )
+例如：
+db.userData.find({ "userMetadata.likes" : "dogs" })
+db.userData.find({ "userMetadata.dislikes" : "pickles" })
+db.userData.find({ "userMetadata.age" : { $gt : 30 } })
+db.userData.find({ "userMetadata" : "inactive" })
+
+散列索引
+散列索引维护具有索引字段值的散列的条目。
+散列索引支持分片使用散列分片键。
+散列索引使用散列函数计算索引字段值的散列。[1]散列函数折叠嵌入文档并计算整个值的散列，但不支持多键（即数组）索引。具体来说，在包含数组的字段上创建哈希索引或尝试将数组插入散列索引字段将返回错误。
+要创建一个散列索引，指定hashed作为索引键的值，如以下示例所示：
+db.collection.createIndex( { _id: "hashed" } )
+创建复合哈希索引
+从MongoDB 4.4开始，MongoDB支持创建包含单个哈希字段的复合索引。
+db.collection.createIndex( { "fieldA" : 1, "fieldB" : "hashed", "fieldC" : -1 } )
+唯一约束
+mongo不支持在hash索引上指定唯一约束。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
