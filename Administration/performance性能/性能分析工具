@@ -1,0 +1,136 @@
+数据库性能分析
+数据库性能分析集合详细记录了针对mongod实例运行时数据库执行的命令。它包括CRUD操作，也包括配置和管理命令。性能分析工具
+写入所有的数据到system.profile集合，在每一个性能库中它是一个固定集合。
+默认情况下，性能分析工具是off关闭的。你可以在每一个数据库或者每一个实例启动基于其中之一性能别的性能工具。（也就是说这个性能分析工具有好几个级别）
+
+当启动性能分析时，对数据库的性能和磁盘使用有影响。
+
+
+性能分析级别
+有以下性能分析级别：
+0   关闭，不搜集任何数据，这是默认值。
+1   分析器搜集那些超过慢速阈值的操作数据
+2   分析器搜集所有的操作数据。
+
+启动和配置数据库分析
+这里介绍mongo shell助手db.setProfilingLevel()启动性能分析器。关于使用驱动的，可以查看驱动文档。https://www.mongodb.com/docs/drivers/
+当启动分析器后，也就是分析器级别profiling level的值超过0，system.profile才会创建。
+示例：
+db.setProfilingLevel(2)
+此shell会返回一个文档展示先前的性能分析级别。“OK”：1键值对表示操作成功：
+{ "was" : 0, "slowms" : 100, "sampleRate" : 1.0, "ok" : 1 }
+
+如果想检查最新的设置级别，可以使用shell：
+db.getProfilingStatus()
+此shell返回：
+{ "was" : 0, "slowms" : 100, "sampleRate" : 1.0, "ok" : 1 }
+“was”:此字段表示当前分析器级别，
+“slowms”:此字段表示操作时间阈值，以毫秒为单位，超过此设置值，被认为慢sql操作。
+"sampleRate":此字段表示应该搜集多少慢操作的百分比。
+如果只想查看当前分析器的级别，可使用以下shell:
+db.getProfilingLevel()
+slowms和sampleRate是全局的，当设置时，它会影响进程中的所有数据库。
+
+指定慢操作的阈值
+慢操作阈值默认是100毫秒，想改变阈值，指定想要的阈值可以使用下面这些方法：
+1、使用profile命令，语法如下：
+{
+  profile: <level>,
+  slowms: <threshold>,
+  sampleRate: <rate>,
+  filter: <filter expression>
+}
+或者db.setProfilingLevel() shell helper 方法。
+2、命令行启动时设置参数值--slowms.
+3、在配置文件中设置 slowOpThresholdMs :
+operationProfiling:
+    slowOpSampleRate:1.0
+示例：
+设置级别为1，慢阈值20毫秒：
+db.setProfilingLevel(1, { slowms: 20 })
+从4.0版本开始，你可以使用db.setProfilingLevel()去配置slowms和sampleRate在mongos上。对于mongos,slowms和sampleRate配置设置只影响诊断日志，
+不会影响性能分析器，因为性能分析器在mongos上不可用。
+例如在mongos上：
+db.setProfilingLevel(0, { slowms: 20 })
+
+从4.2开始，分析器条目和诊断日志信息（i.e. mongod/mongos log messages）for read/write operations include:
+1、queryHash 帮助识别慢查询对于相同的查询结构。
+2、planCacheKey 提供更深入的查询计划缓存对于慢查询。
+                                                    重点理解
+从4.2开始，复制集的从成员可以设置日志操作日志条目log oplog entries(https://www.mongodb.com/docs/v4.4/core/replica-set-oplog/#std-label-slow-oplog-application)
+把超过阈值的操作发送给应用。关于这些慢操作日志信息：
+1、记录从节点到诊断日志。
+2、记录在repl组件下，格式文本applied op: <oplog entry> took <num>ms
+repl 复制集相关信息，例如初始同步，心跳，稳态复制，和回滚。指定repl组件日志级别，可以设置 systemLog.component.replication.verbosity参数。
+3、不依赖于日志级别（系统级别或组件级别）
+4、不依赖于分析级别
+5、。。。。。。。。。
+
+分析缓慢操作的随机样本 version 3.6 start
+默认情况下，sampleRate 设置为1.0，表示100%。
+mongod示例：
+db.setProfilingLevel(1, { sampleRate: 0.42 })
+
+对分析操作设置筛选器 new in  version 4.4.2
+For mongod instances, the filter affects both the diagnostic log and, if enabled, the profiler.
+For mongos instances, the filter affects the diagnostic log only and not the profiler since profiling is not available on mongos.
+For example, the following db.setProfilingLevel() method sets for a mongod instance:
+db.setProfilingLevel( 2, { filter: { op: "query", millis: { $gt: 2000 } } } )
+
+Profiler数据查询示例
+本节显示对system.profile集合。有关查询输出的解释，请参见https://www.mongodb.com/docs/v4.4/reference/database-profiler/
+返回最近的10个日志条目system.profile集合，运行类似以下的查询：
+db.system.profile.find().limit(10).sort( { ts : -1 } ).pretty()    pretty()表示格式化输出
+返回所有的操作，除了命令操作（$cmd）,运行类似于以下的查询：
+db.system.profile.find( { op: { $ne : 'command' } } ).pretty()
+要返回特定集合的操作，请运行类似于以下的查询。此示例返回包含mydb.test集合：
+db.system.profile.find( { ns : 'mydb.test' } ).pretty()
+返回操作慢于5毫秒，运行类似于以下的查询：
+db.system.profile.find( { millis : { $gt : 5 } } ).pretty()
+要返回特定时间范围的信息，请运行类似以下的查询：
+db.system.profile.find({
+  ts : {
+    $gt: new ISODate("2012-12-09T03:00:00Z"),
+    $lt: new ISODate("2012-12-09T03:40:00Z")
+  }
+}).pretty()
+以下示例查看时间范围，抑制user输出中的字段，使其更容易阅读，并按每个操作运行所需的时间对结果进行排序：
+db.system.profile.find({
+  ts : {
+    $gt: new ISODate("2011-07-12T03:00:00Z"),
+    $lt: new ISODate("2011-07-12T03:40:00Z")
+  }
+}, { user: 0 }).sort( { millis: -1 } )
+
+显示最近的五个事件
+show profile
+
+Profiler开销
+启用时，分析会影响数据库性能，特别是当配置了分析级别2，或使用低电平时门槛分析级别为1的值。分析还占用磁盘空间，因为它记录到system.profile集合和MongoDBlogfile.在生产部署上配置和启用分析器之前，请仔细考虑任何性能和安全影响。
+
+ system.profile Collection
+ 此集合是容量为1M的固定大小集合。此大小的集合通常可以存储数千个分析文档，但某些应用程序可能会或多或少地使用分析文档。
+ 如果您需要更改system.profile集合的大小，请按照以下步骤操作。
+ 
+ Change Size of system.profile Collection on the Primary
+ To change the size of the system.profile collection on the primary, you must:
+1、disable profiling.
+2、p the system.profile collection.
+3、reate a new system.profile collection.
+4、e-enable profiling.
+
+For example, to create a new system.profile collection that is 4000000 bytes (4 MB), use the following sequence of operations in the mongo shell:
+db.setProfilingLevel(0)
+db.system.profile.drop()
+db.createCollection( "system.profile", { capped: true, size:4000000 } )
+db.setProfilingLevel(1)
+
+Change Size of system.profile Collection on a Secondary
+在从节点上修改system.profile的大小，你必须停止从节点，然后单独的运行它，然后执行上面的步骤。做完后，再重启它作为一个复制集成员。
+更多信息查看：https://www.mongodb.com/docs/v4.4/tutorial/perform-maintence-on-replica-set-members/
+
+
+
+
+
+
