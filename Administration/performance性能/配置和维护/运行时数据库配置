@@ -1,0 +1,72 @@
+Configure the Database
+基本配置：
+processManagement:
+   fork: true
+net:
+   bindIp: localhost
+   port: 27017
+storage:
+   dbPath: /var/lib/mongo
+systemLog:
+   destination: file
+   path: "/var/log/mongodb/mongod.log"
+   logAppend: true
+storage:
+   journal:
+      enabled: true
+
+fork is true,启动mongod的后台模式（守护进程），它把mondodb从当前会话中分离，允许数据库以传统方式运行。
+bindIp is localhost,强制服务器只监听本地IP的请求。仅绑定到应用级系统可以通过系统网络过滤提供的访问控制访问的安全接口
+port is 27017,数据库实例的默认端口。mongodb可以绑定到任何端口。您还可以使用网络过滤工具根据端口过滤访问
+quiet is true.This disables all but the most critical entries in output/log file, and is not recommended for production systems. If you do set this option, you can use setParameter to modify this setting during run time.
+dbPath is /var/lib/mongo, 指定mongodb存储它的数据文件。假如在linux系统上使用包管理工具安装mongodb，比如yum或者apt,
+dbPath的默认路径是/etc/mongod.conf，取决于系统类型。
+systemLog.path is /var/log/mongodb/mongod.log，mongod进程的输出位置，如果不设置这个值，mongod会输出到标准输出。
+logAppend is true,确保mongod不会覆盖已经存在的日志文件，在服务器启动之后。
+storage.journal.enabled is true, 它启用了日志记录。日志可确保单实例写入持久性。mongod的64位版本默认启用日志记录。因此，此设置可能是多余的。
+
+给定默认配置，其中一些值可能是冗余的。然而，在许多情况下，明确说明配置会提高整体系统的可理解性。
+
+安全注意事项
+net:
+   bindIp: localhost,10.8.0.10,192.168.4.24,/tmp/mongod.sock
+security:
+   authorization: enabled
+   
+复制配置
+replica set configuration is straightforward,and only requires that the replSetName have a value that is consistent among all members of the set. Consider the following:
+replication:
+   replSetName: set0
+   
+Use descriptive names for sets. Once configured, use the mongo shell to add hosts to the replica set.
+To enable authentication for the replica set using keyfiles , add the following keyFile option [1]:
+security:
+   keyFile: /srv/mongodb/keyfile
+ 
+Sharding Configuration
+配置服务器存储群集的元数据，而分片存储数据。
+配置服务器mongod实例，在配置文件中，指定configsvr对于sharding.clusterRole设置。
+配置服务器必须部署为副本集。
+ sharding:
+    clusterRole: configsvr
+ net:
+    bindIp: 10.8.0.12
+    port: 27001
+replication:
+    replSetName: csRS
+要将配置服务器部署为副本集，配置服务器必须运行WiredTiger存储引擎
+配置分片mongod实例，指定shardsvr对于sharding.clusterRole设置，
+sharding:
+   clusterRole: shardsvr
+replication:
+   replSetName: shardA
+如果作为副本集运行，initiate分片副本集并添加成员。
+
+For the router (i.e. mongos), configure at least one mongos process with the following setting:
+sharding:
+   configDB: csRS/10.8.0.12:27001
+
+
+
+
+
