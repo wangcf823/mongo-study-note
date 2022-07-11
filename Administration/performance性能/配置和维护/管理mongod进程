@@ -1,0 +1,63 @@
+启动   略。。。。。
+关闭mongod进程
+use shutdownServer()
+方法如下：
+use admin
+db.shutdownServer()
+
+Use --shutdown
+方法如下：
+mongod --shutdown
+
+Use CTRL-C
+When running the mongod instance in interactive mode (i.e. without --fork), issue Control-C to perform a clean shutdown.
+
+Use kill
+仅在Linux和macOS上受支持。从命令行，关闭特定的mongod使用以下命令之一的实例：
+kill <mongod process ID>
+kill -2 <mongod process ID>
+
+SIGTERM和副本集
+从4.0.8开始，如果复制集接收到sigterm,在关闭之前，主节点会尝试降级。
+如果降级成功，实例不会在投票选举中成为新的主节点，并继续关闭。
+如果降级失败，实例会继续关闭。
+
+告警
+Never use kill -9 (i.e. SIGKILL) to terminate a mongod instance.
+
+故障检修mongod进程
+生成回溯
+kill -SIGUSR2 <mongod process ID>
+回溯数据结果会写入日志文件  logpath.
+
+停止复制集
+教程
+假如mongod是复制集的主节点，停止此mongod实例的进程有下面的步骤：
+1、检查哪个是最新的辅助节点。
+2、如果主节点10秒内没有辅助节点，mongod将返回信息，它不会关闭。你可以通过shutdown命令加上timeoutSecs参数去等待辅助节点去捕获。
+3、假如主节点10秒内有辅助节点，主节点会降级并等待辅助节点捕获。
+4、60秒后或者一旦辅助节点捕获，主节点将关闭。
+
+强制关闭复制集
+假如没有最新的辅助节点，你又想关闭主节点，可以使用shutdown命令带上force参数，像下面这样操作：
+db.adminCommand({shutdown : 1, force : true})
+
+假如再指定的秒数内捕获了辅助节点，主节点将关闭。假如辅助节点没有被捕获，它将不会被关闭。
+The following command issues shutdown with timeoutSecs set to 5:
+db.adminCommand({shutdown : 1, timeoutSecs : 5})
+
+或者，您可以使用timeoutSecs与db.shutdownServer()方法：
+db.shutdownServer({timeoutSecs : 5})
+
+
+
+
+
+
+
+
+
+
+
+
+
