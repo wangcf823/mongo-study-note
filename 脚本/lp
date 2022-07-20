@@ -1,0 +1,285 @@
+mongo备份恢复工具pbm:
+
+pbm_config.yaml
+pitr:
+  enabled: true
+storage:
+  type: filesystem
+  filesystem:
+    path: /data01/local_backup
+
+1、先把原库中所有需要启用分片的且分片规则为_id:"hashed"集合取出来（）
+
+2、目标库执行
+use admin
+var collections = ['t200', 't300'];//集合放这个数组中
+collections.forEach(function(collection) { 
+db.runCommand({shardCollection:"test."+collection,key:{_id:"hashed"}})
+});
+
+
+ var bulk = db.getCollection(collection).initializeUnorderedBulkOp()
+ 
+ db.adminCommand( { setParameter: 1,transactionLifetimeLimitSeconds: 300 } ) 
+ db.adminCommand( { setParameter: 1,maxTransactionLockRequestTimeoutMillis: 3000 } )
+ 
+ setParameter:
+  replWriterThreadCount: "16"
+  
+  
+  
+mongostat是mongdb自带的状态检测工具，在命令行下使用。它会间隔固定时间获取mongodb的当前运行状态，并输出。如果你发现数据库突然变慢或者有其他问题的话，你第一手的操作就考虑采用mongostat来查看mongo的状态。
+mongotop --authenticationDatabase  admin   同上  也是mongo的监控工具
+
+当可用的读取或写入票据剩余数量达到零时，新的读取或写入请求将排队，直到有新的读取或写入票据可用。并发读写操作的最大值分别由参数wiredTigerConcurrentReadTransactions和wiredTigerConcurrentWriteTransactions定义。两者默认等于128。但是在增加它的时候要小心：如果同时操作的数量太高，你可能会用完系统资源（特别是CPU）。通过添加更多分片来水平缩放可以帮助支持高吞吐量.
+
+db.os.find({}).forEach(function(data){
+var host=data.hostname;
+var region=data.region;
+db.rdos.update({"_id":host},{$set:{"region":region}})
+})
+
+##########################
+#调整优先级、隐藏、投票权
+cfg = rs.conf()
+cfg.members[3].votes = 0
+cfg.members[3].priority = 0
+rs.reconfig(cfg,{force:true})
+rs.conf()
+
+cfg = rs.conf()
+cfg.members[2].priority = 0
+cfg.members[2].votes = 0
+rs.reconfig(cfg,{force:true})
+rs.conf()
+
+cfg = rs.conf()
+cfg.members[9].priority = 3
+rs.reconfig(cfg,{force:true})
+rs.conf()
+
+cfg = rs.conf()
+cfg.members[3].priority = 5
+rs.reconfig(cfg)
+rs.conf()
+
+cfg = rs.conf()
+cfg.members[3].priority = 1
+cfg.members[3].votes = 1
+rs.reconfig(cfg,{force:true})
+rs.conf()
+
+
+#rs.conf()中有节点信息情况下（指要成主节点这个节点），执行如下命令将节点变成主节点。
+cfg = rs.conf()
+cfg.members = [cfg.members[0]]
+rs.reconfig(cfg, {force : true})
+
+#rs.conf()中无节点信息情况下（指要成主节点这个节点），执行如下命令将节点变成主节点。
+cfg = rs.conf()
+cfg.members = [{
+ "_id" : 10,
+ "host" : "hostname:port",
+ "arbiterOnly" : false,
+ "buildIndexes" : true,
+ "hidden" : false,
+ "priority" : 1,
+ "tags" : {
+ },
+ "slaveDelay" : NumberLong(0),
+ "votes" : 1
+}]
+rs.reconfig(cfg,{force:true})
+rs.conf()
+
+db.runCommand( {
+     find: "Tags",
+     readConcern: { level: "majority" }} )
+
+###########################
+1 其实是Linux默认进程能打开最大文件数有关
+ulimit -n 2000
+
+预热：
+1)如果业务查询中可以直接使用到covered index来查询的，或者说需要预热index的时候：
+db.collection.find({}, {"_id" : 0, "field_a" : 1, "field_b" : 1}).hint({"field_a" : 1, "field_b" : 1}).explain()
+
+2)当需要预热working set时，前提是您知道你的collection中哪些数据是经常需要被访问的，通常是某个时间段，然后将这个时间段的collection，使用上面相同的方法来预热。
+
+不同之处是：预热index是将这个index都预热了，所以查询条件是{}，鹅而，预热working set，只是预热collection中某一部分数据，所以这个查询条件可能是和时间范围相关的条件。
+
+将数据库/数据目录移至内存:
+for  file  in /data01/mginsts/cdd6360a-090c-410e-8aea-496f1e154d9e/data/db/index/*
+do
+dd  if=$file  of=/dev/null
+done
+
+当要加载的数据大于内存大小的，之前加载的数据可能会挤兑出内存,所以有的时候将整个数据目录加载
+到数据库中意义并不是很大,
+
+##########################
+时间转换成OBJECTID:
+ObjectId(Math.floor(new Date('2021/02/21')/1000).toString(16)+"0000000000000000")
+
+36000000
+
+##########################
+group by sum
+
+service为字段名
+
+db.LOG_TRACE_NOIOPUT_T.aggregate([{$group : {_id : "$SERVICE", num_tutorial : {$sum : 1}}}])--sum(*) group by SERVICE
+
+$project：修改输入文档的结构。可以用来重命名、增加或删除域，也可以用于创建计算结果以及嵌套文档。
+$match：用于过滤数据，只输出符合条件的文档。$match使用MongoDB的标准查询操作。
+$limit：用来限制MongoDB聚合管道返回的文档数。
+$skip：在聚合管道中跳过指定数量的文档，并返回余下的文档。
+$unwind：将文档中的某一个数组类型字段拆分成多条，每条包含数组中的一个值。
+$group：将集合中的文档分组，可用于统计结果。
+$sort：将输入文档排序后输出。
+$geoNear：输出接近某一地理位置的有序文档。
+
+db.article.aggregate(
+    { $project : {
+        _id : 0 ,
+        title : 1 ,
+        author : 1
+    }});
+=db.article.find({},{_id : 0,title : 1,author : 1})
+
+
+#modify chunksize
+db.settings.save( { _id:"chunksize", value: <sizeInMB> } )
+
+拆分特大块(hostname取min和max中间值)
+sh.splitAt("test.54", {"hostName":"","created_date":"$minKey"})
+
+sh.splitAt("test.23", {"hostName":"","created_date":"$minKey"})
+
+sh.splitAt("test.12", {"service_id":"79"})
+
+close autosplit
+db.settings.update({ _id: "autosplit" }, { $set :{ enabled: true }} , true );
+
+
+//先创建分片键索引
+db.table.createIndex({_id:"hashed"},{background:true})
+
+//启用分片
+use admin
+sh.enableSharding("db") \\替换db名称
+sh.shardCollection("db.table",{_id:"hashed"},false,{numInitialChunks:2000}) \\替换db、table名称
+
+
+2、手动分片
+
+①、分片语法：sh.splitAt(数据库.表格,{分割策略})
+for(var i=1;i<=10;i++){sh.splitAt('shop.user',{user_id:i*1000})}
+预先在shop数据库的user表上根据user_id字段数量分割，每隔1K条数据分一个chunk一共分10次，这样的界限切好chunk(虽然chunk是空的), 这些chunk将会均匀移动到各片上.
+
+
+
+mongooplog工具使用:
+from:test:10002
+to:test:10001
+mongooplog --from test:10002 --host test:10001
+
+
+-----------------
+oplog还原过程：
+1、	mongodump备份时加上oplog选项。
+2、	在集合中插入几条数据再删除。
+3、	mongodump导出oplog.rs中的数据,把oplog.rs.bson重命名为oplog.bson。
+4、	用bsondump查看oplog.rs中的数据，确认需要还原的时间点。
+5、 用mongorestore还原mongodump备份数据。
+6、	用mongorestore还原数据，加选项  --oplogReplay --oplogLimit=第4步确认的时间点。
+
+
+安装ycsb
+scp host:路径    --w2
+
+cd ycsb-0.1.4
+
+bin/ycsb load mongodb -threads 50 -P workloads/workloada -s--写
+
+bin/ycsb run mongodb -threads 50 -P workloads/workloadb -s--读多写少
+
+bin/ycsb run mongodb -threads 50 -P workloads/workloadc -s--写多读少
+
+bin/ycsb run mongodb -threads 50 -P workloads/workloadd -s--混合
+
+bin/ycsb run mongodb -threads 50 -P workloads/workloade -s--读
+
+--------------------
+修改oplog size:
+
+1:停掉所有replca set节点.
+2:主节点删除local库下的文件，从节点删除数据目录下所有文件.
+3:修改所有节点配置文件.
+4:重启所有节点.
+5:重新配置replca set，从节点会重新同步所有数据（initial sync）.
+
+
+批量停止：
+
+db.currentOp({"secs_running":{$lte:1},"msg":/Index*/}).inprog.forEach(function(item){db.killOp(item.opid)})
+当查询超过1000秒的，停止：
+
+db.currentOp().inprog.forEach(function(item){if(item.secs_running > 1000 )db.killOp(item.opid)})
+停止某个数据源的查询：
+
+db.currentOp().inprog.forEach(function(item){if(item.ns == "g")db.killOp(item.opid)})
+把所有在等待锁的操作显示出来：
+
+db.currentOp().inprog.forEach(function(item){if(item.waitingForLock)print(JSON.stringify(item))})
+把处于等待中的分片显示出来：
+
+db.currentOp().inprog.forEach(function(item){if(item.waitingForLock){print(item.opid.substr(0,9));print(item.op);}})
+把非等待的分片显示出来：
+
+db.currentOp().inprog.forEach(function(item){if(!item.waitingForLock){var lock_info = item["opid"];print(lock_info.substr(0,9));print(item["op"]);}})
+查找所有的查询任务：
+
+db.currentOp().inprog.forEach(function(item){if(item.op=="query"){print(item.opid);}})
+查找所有的非查询任务：
+
+db.currentOp().inprog.forEach(function(item){if(item.op!="query"){print(item.opid);}})
+查找所有的操作：
+
+db.currentOp().inprog.forEach(function(item){print(item.op, item.opid);});
+
+
+------------------------------
+配置balance时间窗口 
+use config
+db.settings.update({ _id : "balancer" }, { $set : { activeWindow : { start : "20:00", stop : "07:00" } } } )
+
+取消时间窗口设置
+use config
+db.settings.update({ _id : "balancer" }, { $unset : { activeWindow : true } })
+
+修改chunk size 
+use config
+db.settings.save( { _id:"chunksize", value: <size> } )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
